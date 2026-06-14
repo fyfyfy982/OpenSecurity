@@ -1,5 +1,7 @@
 # OpenSecurity
 
+> **中文** | [English](README.en.md)
+
 > AI 驱动的多领域安全分析 Agent 平台 —— 让 LLM 真正像一个研究员团队那样工作。
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
