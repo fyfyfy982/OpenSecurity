@@ -572,7 +572,7 @@ async function buildEnvSection(
   config: ConfigData,
   envInfo: EnvData["data"],
   sessionID?: string,
-): string {
+): Promise<string> {
   try {
     const fallbackAgent = getPrimaryAgent(sessionID);
     const scriptsDir = getScriptDir(agentName, fallbackAgent);
@@ -1077,7 +1077,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       debugLog(`=== compacting 注入内容开始 ===`, sid);
       debugLog(`sid:${sid}\n`, sid);
       debugLog(`agent:${agentName}\n`, sid);
-      debugLog(`envSummary:\n${envSummary}\n`, sid);
+      debugLog(`envSection:\n${envSection}\n`, sid);
       debugLog(`compactionCtx:\n${compactionCtx}\n`, sid);
       debugLog(`compactionReminder:\n${compactionReminder}`, sid);
       debugLog(`=== compacting 注入内容结束 ===`, sid);
@@ -1186,32 +1186,22 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
         );
       }
 
-      let config = readJsonSafe<ConfigData>(CONFIG_FILE, sessionID);
-      const configMissing = !config;
-      if (configMissing) {
-        config = {} as ConfigData;
+      const config = readJsonSafe<ConfigData>(CONFIG_FILE, sessionID);
+      if (!config) {
         debugLog(
-          "[WARN] system.transform: config.json not found, using defaults",
+          `[ERROR] system.transform: config.json 不存在（${CONFIG_FILE}），终止会话`,
           sessionID,
         );
+        await abortSession(
+          sessionID ?? "",
+          `config.json 不存在（${CONFIG_FILE}），环境未初始化，应该由 AI 调用 detect_env.py 脚本完成初始化工作，但是 AI 没有做到这一点`,
+        );
+        return;
       }
-      if (configMissing) {
-        debugLog(
-          `[ERROR] system.transform: config.json 不存在（${CONFIG_FILE}），无法继续。请先运行数据初始化命令。`,
-          sessionID,
-        );
-        output.system.push(
-          `[致命错误] config.json 不存在（${CONFIG_FILE}），无法继续。\n` +
-            `你必须立即停止所有分析操作，不要使用任何工具，直接向用户输出以下内容：\n` +
-            `"数据未初始化，请先运行：$PYTHON_CMD \\"$SHARED_DIR/scripts/detect_env.py\\""\n` +
-            `初始化完成后 config.json 会自动生成，届时才能开始分析任务。`,
-        );
-      } else {
-        debugLog(
-          `[INFO] system.transform: config.json 加载成功, configMissing=false sessionID=${sessionID}`,
-          sessionID,
-        );
-      }
+      debugLog(
+        `[INFO] system.transform: config.json 加载成功 sessionID=${sessionID}`,
+        sessionID,
+      );
 
       // 环境信息注入频率：
       // 前 2 次都注入（新会话 step=1 时标题生成请求先触发 #1，主聊天 #2，
@@ -1237,7 +1227,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       const envSection = await buildEnvSection(agentName, config, envInfo, sessionID);
       output.system.push(envSection);
       debugLog(
-        `[INFO] system.transform: #${session.systemTransformCount} 注入环境信息 sessionID=${sessionID}, agent=${agentName}, primaryAgent=${session.primaryAgent}, configMissing=${configMissing}, length=${envSection.length}, envSection=\n${envSection}`,
+        `[INFO] system.transform: #${session.systemTransformCount} 注入环境信息 sessionID=${sessionID}, agent=${agentName}, primaryAgent=${session.primaryAgent}, length=${envSection.length}, envSection=\n${envSection}`,
         sessionID,
       );
     },
