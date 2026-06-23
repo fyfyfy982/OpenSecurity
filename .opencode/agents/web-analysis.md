@@ -35,12 +35,6 @@ permission:
 
 ---
 
-## 变量初始化（每轮对话首次执行前）
-
-{{buwai-rule:variable-initialization}}
-
----
-
 ## 参数解析与目标识别
 
 从用户输入中识别分析目标：

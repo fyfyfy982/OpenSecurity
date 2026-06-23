@@ -587,7 +587,13 @@ function buildEnvSection(
     const sharedDir = join(OPENCODE_ROOT, AGENT_BINARY_ANALYSIS);
     envSection += `- 共享目录 ($SHARED_DIR)路径，它里面有共享的通用的知识、工具和脚本: ${sharedDir}\n`;
     const idaPath = config.ida_path || "未配置";
-    envSection += `- IDA Pro: ${idaPath}\n`;
+    if (idaPath !== "未配置") {
+      const idatPath = join(idaPath, "idat");
+      envSection += `- IDA Pro: ${idaPath}\n`;
+      envSection += `- IDAT ($IDAT): ${idatPath}\n`;
+    } else {
+      envSection += `- IDA Pro: 未配置\n`;
+    }
     envSection += `- Python ($PYTHON_CMD): ${PYTHON_CMD}\n`;
 
     if (envInfo) {
@@ -1028,11 +1034,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       const envInfo = envData?.data;
 
       const envSection = buildEnvSection(agentName, config || {}, envInfo, sid);
-      const envSummary = envSection.replace(
-        "\n## 环境信息\n",
-        "## 环境信息（压缩时自动注入）\n",
-      );
-      output.context.push(envSummary);
+      output.context.push(envSection);
       const compactionCtx = getCompactionContext(agentName);
       const compactionReminder = getCompactionReminder(agentName);
       output.context.push(compactionCtx);
@@ -1206,10 +1208,30 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       );
     },
 
+    // Bash 工具执行前通过 shell.env hook 注入环境变量（awaited）
+    // 使用 shell.env 而非修改 command 字符串，避免 LLM 在上下文中看到
+    // 注入的变量后模仿累积（导致 SESSION_ID='...' AGENT_NAME='...' 重复十几次）
+    "shell.env": async (input, output) => {
+      const sessionID = input.sessionID;
+      if (!sessionID) {
+        debugLog(`shell.env: 跳过 — 无 sessionID, cwd=${input.cwd}`);
+        return;
+      }
+      debugLog(`shell.env: 触发 sessionID=${sessionID} cwd=${input.cwd} callID=${input.callID ?? "无"}`, sessionID);
+      const session = await requireSessionWithPrimary("shell.env", sessionID);
+      if (!session) {
+        debugLog(`shell.env: 跳过 — 非 PRIMARY sessionID=${sessionID}`, sessionID);
+        return;
+      }
+      output.env.SESSION_ID = sessionID;
+      output.env.AGENT_NAME = session.agentName || "";
+      debugLog(`shell.env: 已注入 SESSION_ID=${sessionID} AGENT_NAME=${session.agentName || "无"}`, sessionID);
+    },
+
     // 工具执行前触发（awaited）
     // 职责：
     //   1. config.json 不存在时拦截非初始化命令，强制用户先做数据初始化
-    //   2. 为 bash 命令注入 SESSION_ID + AGENT_NAME 环境变量
+    //   2. 记录时间线（环境变量注入已迁移到 shell.env hook）
     "tool.execute.before": async (input, output) => {
       const sid = input.sessionID;
       const session = await requireSessionWithPrimary(
@@ -1259,25 +1281,6 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
           return;
         }
       }
-
-      const isUnix = !!process.env.SHELL || !!process.env.MSYSTEM;
-      const isPowerShell = !isUnix && !!process.env.PSModulePath;
-      const agentName = session.agentName || "";
-      if (isUnix) {
-        // bash 单引号转义：' → '\''（结束引号→转义单引号→重新开始引号）
-        const safeSid = sid.replace(/'/g, "'\\''");
-        const safeAgent = agentName.replace(/'/g, "'\\''");
-        output.args.command = `SESSION_ID='${safeSid}' AGENT_NAME='${safeAgent}' ${cmd}`;
-      } else if (isPowerShell) {
-        // PowerShell 单引号转义：' → ''（两个单引号）
-        const safeSid = sid.replace(/'/g, "''");
-        const safeAgent = agentName.replace(/'/g, "''");
-        output.args.command = `$env:SESSION_ID='${safeSid}'; $env:AGENT_NAME='${safeAgent}'; ${cmd}`;
-      } else {
-        // cmd.exe 双引号内不需要转义单引号
-        output.args.command = `set "SESSION_ID=${sid}" && set "AGENT_NAME=${agentName}" && ${cmd}`;
-      }
-      debugLog(`injected: ${output.args.command.slice(0, 120)}`, sid);
     },
 
     // 工具执行后触发（fire-and-forget）

@@ -35,12 +35,6 @@ permission:
 
 ---
 
-## 变量初始化（每轮对话首次执行前）
-
-{{buwai-rule:variable-initialization}}
-
----
-
 ## 参数解析
 
 从用户输入中识别目标文件路径和分析需求。支持 APK（.apk）和 IPA（.ipa）格式。路径含空格必须双引号。无法识别则自然提示。

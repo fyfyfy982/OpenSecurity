@@ -98,12 +98,6 @@ permission:
 
 ---
 
-## 变量初始化（每轮对话首次执行前）
-
-{{buwai-rule:variable-initialization}}
-
----
-
 ## 阶段 0：任务初始化（强制）
 
 {{buwai-rule:task-initialization}}
@@ -305,12 +299,6 @@ permission:
 ## 运行环境
 
 {{buwai-rule:running-environment}}
-
----
-
-## 变量初始化（每轮对话首次执行前）
-
-{{buwai-rule:variable-initialization}}
 
 ---
 
