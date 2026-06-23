@@ -48,6 +48,8 @@ for (const name of PRIMARY_AGENTS) {
   AGENT_SCRIPT_DIRS[name] = join(OPENCODE_ROOT, name);
 }
 
+const SHARED_DIR = join(OPENCODE_ROOT, AGENT_BINARY_ANALYSIS);
+
 // ─── 分析持续性恢复 ──────────────────────────────────────────────
 //
 // 当安全分析 Agent 的主 session 空闲时，自动发送恢复消息。
@@ -584,8 +586,7 @@ async function buildEnvSection(
       envSection += `- Agent 目录 ($AGENT_DIR)路径，它是当前Agent所在目录，里面有专用于当前Agent的知识、工具和脚本: ${scriptsDir}\n`;
     }
 
-    const sharedDir = join(OPENCODE_ROOT, AGENT_BINARY_ANALYSIS);
-    envSection += `- 共享目录 ($SHARED_DIR)路径，它里面有共享的通用的知识、工具和脚本: ${sharedDir}\n`;
+    envSection += `- 共享目录 ($SHARED_DIR)路径，它里面有共享的通用的知识、工具和脚本: ${SHARED_DIR}\n`;
     const idaPath = config.ida_path || "未配置";
     if (idaPath !== "未配置") {
       const idatPath = join(idaPath, "idat");
@@ -1262,7 +1263,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       output.env.AGENT_NAME = agentName;
       output.env.PYTHON_CMD = PYTHON_CMD;
       output.env.OPENCODE_ROOT = OPENCODE_ROOT;
-      output.env.SHARED_DIR = join(OPENCODE_ROOT, AGENT_BINARY_ANALYSIS);
+      output.env.SHARED_DIR = SHARED_DIR;
 
       // AGENT_DIR（根据当前 agent 计算）
       const scriptDir = getScriptDir(agentName, session.primaryAgent);
@@ -1298,7 +1299,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
 
     // 工具执行前触发（awaited）
     // 职责：
-    //   1. config.json 不存在时拦截非初始化命令，强制用户先做数据初始化
+    //   1. config.json 不存在时拦截命令（兜底：system.transform 已 abort，此处防竞争条件）
     //   2. 记录时间线（环境变量注入已迁移到 shell.env hook）
     "tool.execute.before": async (input, output) => {
       const sid = input.sessionID;
