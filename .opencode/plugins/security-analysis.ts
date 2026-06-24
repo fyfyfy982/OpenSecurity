@@ -57,8 +57,8 @@ const SHARED_DIR = join(OPENCODE_ROOT, AGENT_BINARY_ANALYSIS);
 //
 // 恢复条件:
 //   1. session.idle 事件触发
-//   2. 该 session 的 primaryAgent 属于 PRIMARY_AGENTS（排除子 session）
-//   3. primaryAgent 不是 security-analysis-evolve（进化 Agent 不做分析工作）
+//   2. 该 session 的 agentName 属于 PRIMARY_AGENTS（排除子 session）
+//   3. agentName 不是 security-analysis-evolve（进化 Agent 不做分析工作）
 //   4. 未超过最大持续时间（默认 6 小时，可通过 .persistence.json 文件指定）
 //   5. 最后一条 assistant 消息未被用户手动中断（error.name !== ABORTED_ERROR_NAME）
 //
@@ -186,9 +186,9 @@ function recordResumeAttempt(sessionID: string): void {
   }
 }
 
-function getLogFilePath(primaryAgent: string | undefined): string {
-  if (primaryAgent && PRIMARY_AGENTS.includes(primaryAgent)) {
-    return join(LOGS_DIR, `${primaryAgent}.log`);
+function getLogFilePath(agentName: string | undefined): string {
+  if (agentName && PRIMARY_AGENTS.includes(agentName)) {
+    return join(LOGS_DIR, `${agentName}.log`);
   }
   return DEFAULT_LOG;
 }
@@ -411,7 +411,7 @@ function ensureVenvPython(): string {
 const PYTHON_CMD = ensureVenvPython();
 
 // 根据实际 agent 名获取脚本目录；子 agent（如 "general"）不在映射表中时，
-// 回退到 primaryAgent 对应的目录；均无映射则返回 undefined
+// 回退到 agentName 对应的目录；均无映射则返回 undefined
 function getScriptDir(
   agentName: string | undefined,
   fallbackAgent?: string,
@@ -581,7 +581,7 @@ async function buildEnvSection(
   sessionID?: string,
 ): Promise<string> {
   try {
-    const fallbackAgent = getPrimaryAgent(sessionID);
+    const fallbackAgent = getAgentName(sessionID);
     const scriptsDir = getScriptDir(agentName, fallbackAgent);
 
     let envSection = `\n## 全局环境和目录位置信息\n**Agent需要这些信息，它们非常关键。如果Agent忽略这些信息，Agent的运行将不符合预期！**\n`;
@@ -658,19 +658,15 @@ async function buildEnvSection(
 // 数据结构
 // - createdAt:   session 初始化时间（ensureSession 设置）
 // - agentName:   当前实际使用的 agent 名（chat.message 设置，如 "binary-analysis"）
-// - primaryAgent: 所属主 agent 名（用于日志路由和工具目录回退）
-//                主 session: chat.message 中根据 PRIMARY_AGENTS 设置
-//                子 session: ensureSession 从父 session 继承
 //
 // 恢复策略
 // 插件重启后内存 Map 清空，OpenCode 不会为已有 session 重发 session.created 事件。
 // ensureSession 通过 client API 按需查询 session info（含 parentID），
-// 递归解析父链恢复 primaryAgent。每个 session 在每个进程生命周期内最多触发
+// 递归解析父链恢复 agentName。每个 session 在每个进程生命周期内最多触发
 // 一次 API 调用，后续访问纯内存读取，零开销。
 interface SessionData {
   createdAt: number;
   agentName?: string;
-  primaryAgent?: string;
   systemTransformCount: number;
 }
 
@@ -684,8 +680,8 @@ let opencodeClient: OpencodeClient | null = null;
 // 并发去重：同一 sessionID 的并发 ensureSession 调用共享同一个 Promise
 const pendingEnsures = new Map<string, Promise<SessionData | undefined>>();
 
-function getPrimaryAgent(sessionID?: string): string | undefined {
-  return sessionID ? sessions.get(sessionID)?.primaryAgent : undefined;
+function getAgentName(sessionID?: string): string | undefined {
+  return sessionID ? sessions.get(sessionID)?.agentName : undefined;
 }
 
 function debugLog(msg: string, sessionID?: string): void {
@@ -694,7 +690,7 @@ function debugLog(msg: string, sessionID?: string): void {
   if (taskDir) {
     writeLog(join(taskDir, "logs", "plugin.log"), msg);
   } else {
-    const logFile = getLogFilePath(getPrimaryAgent(sessionID));
+    const logFile = getLogFilePath(getAgentName(sessionID));
     writeLog(logFile, msg);
   }
 }
@@ -736,7 +732,7 @@ async function abortSession(sessionID: string, reason: string): Promise<void> {
 /**
  * - 已在 Map 中 → 直接返回（零开销）
  * - 不在 Map 中 → 调用 OpenCode client API 查询 session info，
- *   递归解析父链继承 primaryAgent，写入 Map 后返回。
+ *   递归解析父链继承 agentName，写入 Map 后返回。
  * - 同一 session 的并发调用共享同一个 Promise，避免重复 API 请求。
  */
 async function ensureSession(
@@ -787,27 +783,16 @@ async function doEnsureSession(
       return undefined;
     }
 
-    // 从 API 响应直接提取 agent（如果有的话）
-    const directAgent = (sessionInfo as { agent?: string })?.agent;
-
-    // 递归解析父链
-    let primaryAgent: string | undefined;
-    if (sessionInfo.parentID) {
-      const parent = await ensureSession(sessionInfo.parentID);
-      primaryAgent = parent?.primaryAgent;
-    }
-    // 优先使用直接 agent，回退到父链继承
-    const agentName = directAgent || primaryAgent;
+    const agentName = (sessionInfo as { agent?: string })?.agent;
 
     const session: SessionData = {
       createdAt: Date.now(),
       agentName,
-      primaryAgent: agentName,
       systemTransformCount: 0,
     };
     sessions.set(sessionID, session);
     debugLog(
-      `doEnsureSession: 恢复 sessionID=${sessionID} agentName=${agentName || "无"} primaryAgent=${agentName || "无"} directAgent=${directAgent || "无"} parentID=${sessionInfo.parentID || "无"}`,
+      `doEnsureSession: 恢复 sessionID=${sessionID} agentName=${agentName || "无"} parentID=${sessionInfo.parentID || "无"}`,
       sessionID,
     );
     return session;
@@ -871,7 +856,6 @@ async function requireSessionWithPrimary(
       const session: SessionData = {
         createdAt: Date.now(),
         agentName,
-        primaryAgent: agentName,
         systemTransformCount: 0,
       };
       sessions.set(sessionID, session);
@@ -1009,7 +993,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
     tool: {},
 
     // 用户发送消息时触发（awaited，宿主等待完成）
-    // 职责：记录 agentName + 设置主 session 的 primaryAgent
+    // 职责：记录 agentName
     // 注意：chat.message 是唯一能直接从 input.agent 获取 agent 名的 hook
     //       system.transform / tool.execute.before 的 input 无 agent
     //       但 requireSessionWithPrimary 可通过 session.get API 间接获取
@@ -1051,9 +1035,8 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       if (!session) return;
 
       session.agentName = agent;
-      session.primaryAgent = agent;
       debugLog(
-        `chat.message: sessionID=${sessionID} agent=${agent} primaryAgent=${agent}`,
+        `chat.message: sessionID=${sessionID} agent=${agent}`,
         sessionID,
       );
     },
@@ -1066,7 +1049,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       if (!session) return;
       const agentName = session.agentName;
       debugLog(
-        `compacting: sessionID=${sid} agent=${agentName} primaryAgent=${session.primaryAgent}`,
+        `compacting: sessionID=${sid} agent=${agentName}`,
         sid,
       );
       const config = readJsonSafe<ConfigData>(CONFIG_FILE, sid);
@@ -1101,7 +1084,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
         }
 
         // 分析持续性恢复：压缩后如果分析尚未完成，AI 应继续自主分析
-        if (session.primaryAgent && PRIMARY_AGENTS.includes(session.primaryAgent) && session.primaryAgent !== AGENT_SECURITY_ANALYSIS_EVOLVE) {
+        if (session.agentName && PRIMARY_AGENTS.includes(session.agentName) && session.agentName !== AGENT_SECURITY_ANALYSIS_EVOLVE) {
           output.context.push(`## 分析持续性（压缩后必须遵守）
 这是安全分析会话，分析可能尚未完成。压缩后请继续执行未完成的分析步骤，不要输出状态报告后停下来等待用户。如果分析已完成，直接输出最终结论即可。`);
         }
@@ -1233,7 +1216,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       const envSection = await buildEnvSection(agentName, config, envInfo, sessionID);
       output.system.push(envSection);
       debugLog(
-        `[INFO] system.transform: #${session.systemTransformCount} 注入环境信息 sessionID=${sessionID}, agent=${agentName}, primaryAgent=${session.primaryAgent}, length=${envSection.length}, envSection=\n${envSection}`,
+        `[INFO] system.transform: #${session.systemTransformCount} 注入环境信息 sessionID=${sessionID}, agent=${agentName}, length=${envSection.length}, envSection=\n${envSection}`,
         sessionID,
       );
     },
@@ -1270,7 +1253,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       output.env.SHARED_DIR = SHARED_DIR;
 
       // AGENT_DIR（根据当前 agent 计算）
-      const scriptDir = getScriptDir(agentName, session.primaryAgent);
+      const scriptDir = getScriptDir(agentName, session.agentName);
       if (scriptDir) {
         output.env.AGENT_DIR = scriptDir;
       }
@@ -1443,7 +1426,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
               sessionID,
             );
           } else if (
-            session.primaryAgent === AGENT_SECURITY_ANALYSIS_EVOLVE
+            session.agentName === AGENT_SECURITY_ANALYSIS_EVOLVE
           ) {
             debugLog(
               `session.idle: 跳过恢复 — evolve agent 不做分析工作, sessionID=${sessionID}`,
@@ -1484,13 +1467,13 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
                     );
                   } else {
                     debugLog(
-                      `session.idle: 恢复分析 sessionID=${sessionID} agent=${session.primaryAgent} elapsed=${Math.floor(elapsed / 60000)}m max=${Math.floor(maxDuration / 60000)}m resume_count=${resumeCount}`,
+                      `session.idle: 恢复分析 sessionID=${sessionID} agent=${session.agentName} elapsed=${Math.floor(elapsed / 60000)}m max=${Math.floor(maxDuration / 60000)}m resume_count=${resumeCount}`,
                       sessionID,
                     );
                     await opencodeClient.session.promptAsync({
                       path: { id: sessionID },
                       body: {
-                        agent: session.primaryAgent,
+                        agent: session.agentName,
                         parts: [{ type: "text" as const, text: RESUME_PROMPT, synthetic: true }],
                       },
                     });
@@ -1520,7 +1503,7 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       // session 状态变化和错误（非 idle）
       if (
         sessionID &&
-        PRIMARY_AGENTS.includes(sessions.get(sessionID)?.primaryAgent || "")
+        PRIMARY_AGENTS.includes(sessions.get(sessionID)?.agentName || "")
       ) {
         if (event.type === "session.status") {
           recordTimeline(sessionID, {
