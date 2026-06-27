@@ -1,11 +1,25 @@
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { fileURLToPath } from "url";
+import { existsSync } from "fs";
 
 // ─── 路径常量 ──────────────────────────────────────────────────
 
+// OpenCode 可能将依赖文件放到 lib/ 子目录，导致 import.meta.url 指向 lib/ 而非 plugins/。
+// 向上查找 agents/ 目录确定真正的 .opencode/ 根，兼容单文件和多文件两种布局。
+function findOpenCodeRoot(startDir: string): string {
+  let dir = startDir;
+  for (let i = 0; i < 5; i++) {
+    if (existsSync(join(dir, "agents"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return dirname(startDir); // fallback
+}
+
 export const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url));
-export const OPENCODE_ROOT = dirname(PLUGIN_DIR);
+export const OPENCODE_ROOT = findOpenCodeRoot(PLUGIN_DIR);
 
 export const DATA_DIR = join(homedir(), "bw-security-analysis");
 export const CONFIG_FILE = join(DATA_DIR, "config.json");

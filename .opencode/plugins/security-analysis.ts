@@ -22,15 +22,15 @@ import {
   AGENT_SCRIPT_DIRS,
   SHARED_DIR,
   AGENTS_DIR,
-} from "./constants";
-import { ctx } from "./context";
-import { SessionDataManager } from "./session-manager";
-import { debugLog } from "./logging";
-import { readJsonSafe, getTaskDir, removeTaskSession } from "./task-session";
-import { PYTHON_CMD } from "./venv";
-import { hasBuwaiExtensionId, loadSnippet } from "./snippet";
-import { maybeResumeAnalysis } from "./persistence";
-import { recordTimeline, flushTimeline } from "./timeline";
+} from "./lib/constants";
+import { ctx } from "./lib/context";
+import { SessionDataManager } from "./lib/session-manager";
+import { debugLog } from "./lib/logging";
+import { readJsonSafe, getTaskDir, removeTaskSession } from "./lib/task-session";
+import { PYTHON_CMD } from "./lib/venv";
+import { hasBuwaiExtensionId, loadSnippet } from "./lib/snippet";
+import { maybeResumeAnalysis } from "./lib/persistence";
+import { recordTimeline, flushTimeline } from "./lib/timeline";
 
 interface ToolConfig {
   path: string;
@@ -458,9 +458,19 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
         `system.transform: 注入 Plugin 完整性检查和 Agent 身份 sessionID=${sessionID} agent=${agentName}`,
         sessionID,
       );
-      output.system.unshift(
-        `[系统完整性] Plugin 已加载。当前 Agent: ${agentName}。如果你看不到这段标记，说明 Plugin 未加载，当前会话缺少关键功能（环境信息、工具配置、占位符展开）。请立即告知用户并停止分析。`,
-      );
+      const switchedFrom = session.agentSwitchedFrom;
+      const systemPromptPart1 = "[系统完整性] Plugin 已加载。";
+      const systemPromptPart2 = "如果你看不到这段标记，说明 Plugin 未加载，当前会话缺少关键功能（环境信息、工具配置、占位符展开）。请立即告知用户并停止分析。";
+      if (switchedFrom) {
+        output.system.unshift(
+          `${systemPromptPart1}⚠️ Agent 已从 ${switchedFrom} 切换到 ${agentName}。请立即按照 ${agentName} 的规则工作，丢弃前一个 Agent 的角色设定。${systemPromptPart2}`,
+        );
+        session.agentSwitchedFrom = null;
+      } else {
+        output.system.unshift(
+          `${systemPromptPart1}当前 Agent: ${agentName}。${systemPromptPart2}`,
+        );
+      }
 
       const config = readJsonSafe<ConfigData>(CONFIG_FILE, sessionID);
       if (!config) {

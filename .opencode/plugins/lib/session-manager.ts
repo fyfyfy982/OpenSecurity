@@ -14,6 +14,8 @@ export class SessionData {
   systemTransformCount = 0;
   /** 用户最后发消息的时间戳（毫秒）。chat.message 时更新。用于 auto-resume 超时判断：从最后一次用户交互开始计时，而非 session 创建时间 */
   lastUserMessageAt: number;
+  /** agent 切换标记。upsert 检测到 agentName 变化时置为旧 agent 名，system.transform 读取后清空 */
+  agentSwitchedFrom: string | null = null;
 
   constructor(agentName: string, parentSessionID?: string) {
     this.createdAt = Date.now();
@@ -62,7 +64,10 @@ export class SessionDataManager {
   async upsert(sessionID: string, agentName: string): Promise<SessionData> {
     const session = await this.createInternal(sessionID); // 已存在则返回，不存在则创建（失败抛异常）
     session.lastUserMessageAt = Date.now();
-    session.agentName = agentName;
+    if (session.agentName !== agentName) {
+      session.agentSwitchedFrom = session.agentName;
+      session.agentName = agentName;
+    }
     return session;
   }
 
