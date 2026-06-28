@@ -7,8 +7,8 @@ description:
   以及自动生成的场景分类建议和推荐下一步操作。
 
   使用方式（idat headless）：
-    IDA_OUTPUT=/tmp/result.json \
-      idat -A -S"scripts/initial_analysis.py" -L/tmp/initial.log target.i64
+    IDA_OUTPUT=$TASK_DIR/<初始分析结果>.json \
+      idat -A -S"scripts/initial_analysis.py" -L$TASK_DIR/<初始分析日志>.log target.i64
 
   环境变量：
     IDA_OUTPUT: 输出文件路径（必填）

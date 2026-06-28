@@ -7,11 +7,11 @@ HTTPS MITM 代理 — 拦截并篡改指定 JSON 字段
 
 用法:
     # 生成证书（首次）
-    python3 mitm_proxy.py --gen-ca --workdir /tmp/mitm
+    python3 mitm_proxy.py --gen-ca --workdir $TASK_DIR/mitm
 
     # 启动代理
     python3 mitm_proxy.py \\
-        --workdir /tmp/mitm \\
+        --workdir $TASK_DIR/mitm \\
         --listen-port 44300 \\
         --target-host api.target.com \\
         --tamper-field text \\

@@ -52,7 +52,7 @@ Java.perform(function() {
 ### 项目初始化（首次）
 
 ```bash
-mkdir -p /tmp/frida-project && cd /tmp/frida-project
+mkdir -p $TASK_DIR/frida-project && cd $TASK_DIR/frida-project
 npm init -y
 npm install frida-java-bridge
 # 如需 ObjC Bridge: npm install frida-objc-bridge
@@ -99,7 +99,7 @@ def on_message(message, data):
 # 1. 编译 TypeScript（显式 import bridge）
 compiler = frida.Compiler()
 compiler.on("diagnostics", on_diagnostics)
-bundle = compiler.build("hook.ts", project_root="/tmp/frida-project")
+bundle = compiler.build("hook.ts", project_root="$TASK_DIR/frida-project")
 # bundle 约 750KB（含 frida-java-bridge 运行时）
 
 # 2. 连接设备
@@ -258,7 +258,7 @@ frida-server 进程进入异常状态（残留 agent 未清理、进程僵死等
 ```
 1. 确认症状：尝试加载一个最小纯 Native 脚本
    Python: session.create_script('console.log("ping"); rpc.exports={ping:function(){return 42;}};')
-   CLI: echo 'console.log("ping");' > /tmp/ping.js && frida -U -p <PID> -l /tmp/ping.js
+   CLI: echo 'console.log("ping");' > $TASK_DIR/ping.js && frida -U -p <PID> -l $TASK_DIR/ping.js
 
 2. 最小脚本也超时 → frida-server 异常 → 重启 frida-server
    adb shell "kill -9 $(adb shell 'ps -A | grep <frida_server_name> | awk \"{print \\$2}\"')"

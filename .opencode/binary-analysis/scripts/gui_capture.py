@@ -6,8 +6,8 @@ description:
   截图和操作统一使用 pyautogui，坐标系统一致，无需映射。
 
 usage:
-  python gui_capture.py --output-dir /tmp/view --name step1_initial
-  python gui_capture.py --output-dir /tmp/view --name step1_initial --format png
+  python gui_capture.py --output-dir $TASK_DIR/views --name step1_initial
+  python gui_capture.py --output-dir $TASK_DIR/views --name step1_initial --format png
 
 level: basic
 """

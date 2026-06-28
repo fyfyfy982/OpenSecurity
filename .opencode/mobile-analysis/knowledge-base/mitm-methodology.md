@@ -107,7 +107,7 @@ adb shell ls -la /system/etc/security/cacerts/${HASH}.0
 ```bash
 # --workdir 是必须参数，用于存放 CA 密钥和证书
 python3 $AGENT_DIR/scripts/mitm_proxy.py \
-  --workdir /tmp/mitm \
+  --workdir $TASK_DIR/mitm \
   --listen-port 44300 \
   --target-host api.target.com \
   --target-port 443 \

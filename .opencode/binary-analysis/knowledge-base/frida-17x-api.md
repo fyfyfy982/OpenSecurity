@@ -87,7 +87,7 @@ import ObjC from "frida-objc-bridge";  // 或 frida-java-bridge / frida-swift-br
 ```python
 # Python 端
 compiler = frida.Compiler()
-bundle = compiler.build("script.ts", project_root="/tmp/project")
+bundle = compiler.build("script.ts", project_root="$TASK_DIR/frida-project")
 script = session.create_script(bundle)
 script.load()
 ```

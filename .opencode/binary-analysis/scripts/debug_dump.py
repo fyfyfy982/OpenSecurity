@@ -6,8 +6,8 @@ description:
   适用于任何壳（UPX/ASPack/自定义壳），只要壳不检测调试器。
 
   使用方式（idat headless）：
-    IDA_OEP_ADDR=0x401000 IDA_PE_OUTPUT=/tmp/unpacked.exe IDA_OUTPUT=/tmp/result.json \
-      idat -A -S"scripts/debug_dump.py" -L/tmp/debug.log target.i64
+    IDA_OEP_ADDR=0x401000 IDA_PE_OUTPUT=$TASK_DIR/unpacked.exe IDA_OUTPUT=$TASK_DIR/<dump结果>.json \
+      idat -A -S"scripts/debug_dump.py" -L$TASK_DIR/<dump日志>.log target.i64
 
   环境变量：
     IDA_OEP_ADDR: OEP 地址（十六进制，必填）

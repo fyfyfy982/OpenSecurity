@@ -225,7 +225,7 @@ $PYTHON_CMD "$AGENT_DIR/scripts/detect_env.py" --output "$TASK_DIR/env.json"
 | 脚本 | 用途 | 关键参数 |
 |------|------|---------|
 | `gui_launch.py` | 启动/等待/终止目标程序 | `--action launch\|wait_window\|kill --exe <TARGET> --pid <PID>` |
-| `gui_capture.py` | 截图 | `--output-dir "$TASK_DIR/view" --name <名称>` |
+| `gui_capture.py` | 截图 | `--output-dir "$TASK_DIR/views" --name <名称>` |
 | `gui_act.py` | 键鼠操作 | `--action click\|type --x <X> --y <Y> --text <TEXT> --paste` |
 | `gui_verify.py` | Win32 控件方案（MCP 不可用时降级） | `--exe <TARGET> --discover\|--hook-inject\|--hook-result` |
 

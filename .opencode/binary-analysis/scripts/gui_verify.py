@@ -11,10 +11,10 @@ description:
   Hook 模式需要 frida 包（通过 $PYTHON_CMD 运行）。
 
 usage:
-  python gui_verify.py --exe TARGET.EXE --username "test" --license "XXXX" --output result.json
-  python gui_verify.py --exe TARGET.EXE --discover --output discover.json
-  python gui_verify.py --exe TARGET.EXE --hook-inject --hook-func-addr 0x401000 --hook-inputs-file inputs.json --output result.json
-  python gui_verify.py --exe TARGET.EXE --username "test" --license "XXXX" --hook-result --hook-compare-addr 0x401200 --output result.json
+  python gui_verify.py --exe TARGET.EXE --username "test" --license "XXXX" --output $TASK_DIR/<gui验证结果>.json
+  python gui_verify.py --exe TARGET.EXE --discover --output $TASK_DIR/<控件探测结果>.json
+  python gui_verify.py --exe TARGET.EXE --hook-inject --hook-func-addr 0x401000 --hook-inputs-file $TASK_DIR/<hook输入>.json --output $TASK_DIR/<gui验证结果>.json
+  python gui_verify.py --exe TARGET.EXE --username "test" --license "XXXX" --hook-result --hook-compare-addr 0x401200 --output $TASK_DIR/<gui验证结果>.json
 
 level: intermediate
 """

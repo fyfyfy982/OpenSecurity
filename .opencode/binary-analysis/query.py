@@ -25,8 +25,8 @@ description:
     和十六进制地址（如 0x401000）。
 
   调用方式:
-    IDA_QUERY=entry_points IDA_OUTPUT=/tmp/result.json \\
-      idat -A -S"/path/to/query.py" -L/tmp/idat.log target.i64
+    IDA_QUERY=entry_points IDA_OUTPUT=$TASK_DIR/<查询结果>.json \\
+      idat -A -S"/path/to/query.py" -L$TASK_DIR/<查询日志>.log target.i64
 
 level: intermediate
 """

@@ -128,7 +128,7 @@ permission:
 
 | 脚本 | 用途 | 典型命令 |
 |------|------|---------|
-| build_apk.py | 命令行 APK 构建（无需 Gradle） | `$PYTHON_CMD $AGENT_DIR/scripts/build_apk.py --src dir --output app.apk` |
+| build_apk.py | 命令行 APK 构建（无需 Gradle） | `$PYTHON_CMD $AGENT_DIR/scripts/build_apk.py --src dir --output $TASK_DIR/<apk文件名>.apk` |
 
 ### IDA Pro 脚本（通过 $SHARED_DIR 调用）
 

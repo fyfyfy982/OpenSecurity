@@ -397,7 +397,7 @@ cmp [r14+8], edx       ; verify checksum
 | `enum_drv.exe` | 枚举驱动基址 | 编译: `cl /MT enum_drv.c`（/MT 静态链接避免 UCRT 依赖） |
 | `kd_helper.py` | kd 会话封装 | 纯 Python，见 §2.2 模板 |
 | `test_sign.bat` | 测试签名驱动 | makecert + signtool |
-| `detect_kernel_debug_env.py` | 双机调试环境自动检测 | `$SHARED_DIR/scripts/detect_kernel_debug_env.py --output env.json` |
+| `detect_kernel_debug_env.py` | 双机调试环境自动检测 | `$SHARED_DIR/scripts/detect_kernel_debug_env.py --output $TASK_DIR/<内核调试环境>.json` |
 | `vm_login.py` | VM 登录管理（密码安全隔离） | `$SHARED_DIR/scripts/vm_login.py --login/--status/--encrypt-password` |
 
 **编译注意**：部署到 VM 的工具必须用 `/MT` 静态链接，VM 中可能缺少 UCRT 运行时。

@@ -136,8 +136,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  %(prog)s --src ./MyApp --output myapp.apk
-  %(prog)s --src ./MyApp --output myapp.apk --keystore my-key.jks --ks-pass pass123
+  %(prog)s --src ./MyApp --output $TASK_DIR/<apk文件名>.apk
+  %(prog)s --src ./MyApp --output $TASK_DIR/<apk文件名>.apk --keystore my-key.jks --ks-pass pass123
         """,
     )
     parser.add_argument("--src", required=True, help="源码根目录（含 app/src/main/）")

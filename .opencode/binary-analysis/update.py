@@ -15,11 +15,11 @@ description:
     IDA_DRY_RUN=1 — 只预览操作不实际执行
 
   调用方式:
-    IDA_OPERATION=rename IDA_OLD_NAME=sub_401000 IDA_NEW_NAME=validate_password IDA_OUTPUT=/tmp/result.json \\
-      idat -A -S"/path/to/update.py" -L/tmp/idat.log target.i64
+    IDA_OPERATION=rename IDA_OLD_NAME=sub_401000 IDA_NEW_NAME=validate_password IDA_OUTPUT=$TASK_DIR/<更新结果>.json \\
+      idat -A -S"/path/to/update.py" -L$TASK_DIR/<更新日志>.log target.i64
 
-    IDA_OPERATION=batch IDA_BATCH_FILE=/tmp/ops.json IDA_OUTPUT=/tmp/result.json \\
-      idat -A -S"/path/to/update.py" -L/tmp/idat.log target.i64
+    IDA_OPERATION=batch IDA_BATCH_FILE=$TASK_DIR/batch_ops.json IDA_OUTPUT=$TASK_DIR/<更新结果>.json \\
+      idat -A -S"/path/to/update.py" -L$TASK_DIR/<更新日志>.log target.i64
 
 level: intermediate
 """

@@ -7,7 +7,7 @@ description:
   等样板代码。
 
   使用方式（通过 $PYTHON_CMD 运行）:
-    $PYTHON_CMD $SCRIPTS_DIR/scripts/process_patch.py \\
+    $PYTHON_CMD $SHARED_DIR/scripts/process_patch.py \\
       --exe TARGET.EXE \\
       --patch 0x40234C:EB \\
       --write-data 0x422600:4B43544646 \\
@@ -16,7 +16,7 @@ description:
       --signal 0x42248C:DEADBEEF \\
       --trigger click:1002 \\
       --timeout 15 \\
-      --output result.json
+      --output $TASK_DIR/<patch结果>.json
 
   平台支持: 仅 Windows（使用 ctypes + kernel32/user32）。
 

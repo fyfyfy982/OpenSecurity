@@ -7,8 +7,8 @@
 不依赖 IDAPython，纯 Python + subprocess 调用 vmrun。
 
 使用方式:
-  python detect_kernel_debug_env.py --output env.json
-  python detect_kernel_debug_env.py --output env.json --vm-name "Windows 10 x64"
+  python detect_kernel_debug_env.py --output $TASK_DIR/<内核调试环境>.json
+  python detect_kernel_debug_env.py --output $TASK_DIR/<内核调试环境>.json --vm-name "Windows 10 x64"
 
 环境变量:
   PRIVACY_DATA: 隐私数据文件路径（默认 .privacy-data/privacy-data.json）

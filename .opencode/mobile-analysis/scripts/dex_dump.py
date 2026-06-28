@@ -4,7 +4,7 @@
 使用 frida.Compiler 编译 TypeScript（含 Java bridge），支持全量内存扫描。
 
 用法:
-  python dex_dump.py --pid 1234 --output /tmp/dex_output --host 127.0.0.1:6656
+  python dex_dump.py --pid 1234 --output $TASK_DIR/dex_dump --host 127.0.0.1:6656
 """
 
 import argparse

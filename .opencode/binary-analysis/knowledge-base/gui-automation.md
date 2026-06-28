@@ -11,7 +11,7 @@
 **环境变量说明**:
 - `$PYTHON_CMD`: venv Python 绝对路径（由 Plugin 保证可用，含 pyautogui/pyperclip 等所有第三方包）
 - `$SHARED_DIR`: 脚本根目录（由 Plugin 环境信息注入，见系统提示"环境信息"段）
-- `$TASK_DIR`: 当前任务的工作目录（`~/bw-security-analysis/workspace/<task_id>/`），截图放在 `view/` 子目录下
+- `$TASK_DIR`: 当前任务的工作目录（`~/bw-security-analysis/workspace/<task_id>/`），截图放在 `views/` 子目录下
 
 ## 标准操作流程
 
@@ -32,7 +32,7 @@
 ### Step 3: 截图定位控件
 
 ```bash
-"$PYTHON_CMD" "$SHARED_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/view" --name step1_initial
+"$PYTHON_CMD" "$SHARED_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/views" --name step1_initial
 ```
 
 使用 MCP 分析截图（两种方式任选）:
@@ -40,7 +40,7 @@
 - `zai-mcp-server_ui_to_artifact`（output_type='spec'）: 获取 UI 设计规范
 
 **MCP 调用示例**:
-- image_source: `$TASK_DIR/view/step1_initial.jpg`（本地文件路径）
+- image_source: `$TASK_DIR/views/step1_initial.jpg`（本地文件路径）
 - prompt: "识别截图中所有可交互控件（按钮、输入框、下拉框等），返回每个控件的文字内容和中心坐标 (x, y)"
 
 ### Step 4: 执行操作序列（连续执行，中间不截图）
@@ -65,13 +65,13 @@
 ### Step 5: 截图读取结果
 
 ```bash
-"$PYTHON_CMD" "$SHARED_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/view" --name step2_result
+"$PYTHON_CMD" "$SHARED_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/views" --name step2_result
 ```
 
 使用 MCP 判断结果:
 - 首选: `zai-mcp-server_ui_diff_check`（对比 step1_initial 和 step2_result）
-  - expected_image_source: `$TASK_DIR/view/step1_initial.jpg`
-  - actual_image_source: `$TASK_DIR/view/step2_result.jpg`
+  - expected_image_source: `$TASK_DIR/views/step1_initial.jpg`
+  - actual_image_source: `$TASK_DIR/views/step2_result.jpg`
   - prompt: "对比这两张截图，识别所有视觉变化（新弹窗、文字变化、控件状态变化等），判断操作是否成功"
 - 退化（ui_diff_check 不可用或超时）: `zai-mcp-server_extract_text_from_screenshot`
   - 提取 step2_result 中的所有文字，由 agent 判断操作结果
@@ -137,7 +137,7 @@
 1. **截图时机**: 只在需要信息时截图（定位控件、读结果、诊断故障），不在每步操作前后都截
 2. **操作序列**: 拿到坐标后，连续执行所有操作（click/type），中间不截图
 3. **结果验证**: 操作序列完成后，等 0.5-1s（通过 gui_act.py 的 --settle 参数控制），截一张图让 MCP 判断结果
-4. **产物存储**: 所有截图存储到 `$TASK_DIR/view/`（脚本自动创建目录）
+4. **产物存储**: 所有截图存储到 `$TASK_DIR/views/`（脚本自动创建目录）
 5. **命名约定**: 按操作阶段命名 — `step1_initial`（定位）、`step2_result`（读结果）、`step3_diagnosis`（诊断故障）
 6. **上下文压缩后**: 操作 GUI 前必须拍新截图确认当前状态（不能用旧截图的坐标）
 

@@ -51,7 +51,7 @@ REQUIRED_PACKAGES = {
         "pip_name": "sagemath-standard",
         "agents": ["crypto-analysis"],
         "preinstall": True,
-        "note": "macOS 若 pip 路线卡住：brew install --cask sage",  # 安装命令本身由 detect_env 用 sys.executable 动态生成
+        "note": "安装命令本身由 detect_env 动态生成"
     },
 }
 
@@ -355,11 +355,16 @@ def _check_preinstall(agent):
             print(f"[!] _check_preinstall: find_spec({name}) 异常: {e}", file=sys.stderr)
             raise
         if spec is None:
-            # 安装命令动态生成：用当前 venv 的真实 python（sys.executable）+ python -m pip
-            # （不依赖 pip 二进制在 PATH 上；与 detect_env 自动安装的 sys.executable -m pip 一致）
             install_cmd = f"{sys.executable} -m pip install {info['pip_name']}"
+            # 从条目字段动态生成描述（不靠硬编码 note）
+            agents_str = "/".join(info.get("agents", []))
+            preinstall_desc_part1 = f"预装依赖 {name}（pip: {info['pip_name']}）未安装"
+            desc = f"{agents_str} 需要的{preinstall_desc_part1}" if agents_str else preinstall_desc_part1
             note = info.get("note")
-            install_hint = f"{install_cmd}（{note}）" if note else install_cmd
+            parts = [desc, f"安装命令：{install_cmd}"]
+            if note:
+                parts.append(note)
+            install_hint = "\n".join(parts)
             errors.append({"package": name, "install_hint": install_hint})
     return {"success": len(errors) == 0, "errors": errors}
 

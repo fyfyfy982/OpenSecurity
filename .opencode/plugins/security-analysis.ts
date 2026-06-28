@@ -280,16 +280,20 @@ async function abortSession(sessionID: string, reason: string): Promise<void> {
 // 工具开始执行时间戳（tool.execute.before → tool.execute.after 配对计算耗时）
 const toolStartTimes = new Map<string, number>();
 
-// 预装依赖检查：调 detect_env --check-preinstall <agent>，若该 agent 有未就绪的预装依赖则抛错中断本轮。
-// 失败即暴露：detect_env 执行/退出码/解析任一异常都 throw（不静默跳过，便于发现问题）。
-// chat.message 每条用户消息调用一次；detect_env 此模式不自动装、不缓存，反映最新安装状态。
-function checkPreinstallOrThrow(agent: string, sessionID: string) {
+// 预装依赖检查结果
+type PreinstallResult = {
+  ready: boolean;
+  message: string; // ready=true 时为空；否则是给用户看的错误消息
+};
+
+// 预装依赖检查：调 detect_env --check-preinstall <agent>，返回结构化结果。
+// 纯函数——永远返回，不 throw（包括 detect_env 崩溃的情况）。
+function checkPreinstall(agent: string, sessionID: string): PreinstallResult {
   const detectEnv = join(SHARED_DIR, "scripts", "detect_env.py");
   const r = spawnSync(PYTHON_CMD, [detectEnv, "--check-preinstall", agent], {
     encoding: "utf8",
     timeout: 5000,
   });
-  // 先打印执行结果，便于后续排查
   debugLog(
     `check-preinstall 结果: agent=${agent} status=${r.status} signal=${r.signal}` +
       ` error=${r.error?.message ?? "无"}` +
@@ -298,32 +302,47 @@ function checkPreinstallOrThrow(agent: string, sessionID: string) {
     sessionID,
   );
   if (r.error) {
-    debugLog(`check-preinstall: spawn 错误 agent=${agent} err=${r.error.message}`, sessionID);
-    throw new Error(`[预装检查失败] 无法执行 detect_env（agent=${agent}）：${r.error.message}`);
+    return { ready: false, message: `[预装检查失败] 无法执行 detect_env（${agent}）：${r.error.message}` };
   }
   if (r.status !== 0) {
-    debugLog(`check-preinstall: 非零退出 agent=${agent} status=${r.status}`, sessionID);
-    throw new Error(
-      `[预装检查失败] detect_env 退出码 ${r.status}（agent=${agent}）：${(r.stdout || r.stderr || "").slice(0, 200)}`,
-    );
+    return { ready: false, message: `[预装检查失败] detect_env 退出码 ${r.status}（${agent}）：${(r.stdout || r.stderr || "").slice(0, 200)}` };
   }
   let result: { success?: boolean; errors?: Array<{ package?: string; install_hint?: string }> };
   try {
     result = JSON.parse(r.stdout);
   } catch (e) {
     const msg = (e as Error)?.message ?? String(e);
-    debugLog(`check-preinstall: JSON 解析失败 agent=${agent} err=${msg}`, sessionID);
-    throw new Error(`[预装检查失败] detect_env 输出非合法 JSON（agent=${agent}）：${msg}`);
+    return { ready: false, message: `[预装检查失败] detect_env 输出非合法 JSON（${agent}）：${msg}` };
   }
   if (result.success !== true) {
     const hints = Array.isArray(result.errors)
-      ? result.errors.map((e) => e.install_hint).filter(Boolean).join("；")
+      ? result.errors.map((e) => e.install_hint).filter(Boolean).join("\n")
       : "";
-    throw new Error(
-      hints
+    return {
+      ready: false,
+      message: hints
         ? `[预装依赖缺失] ${agent} 需要的预装依赖未就绪。请先安装：\n${hints}\n装完后重新发送消息。`
         : `[预装检查未通过] ${agent}：detect_env 返回 success 非 true 但无 errors`,
-    );
+    };
+  }
+  return { ready: true, message: "" };
+}
+
+// 往输出区发送一条错误消息并终止 session。
+// chat.message 里不能用 throw（会被 prompt 层转成 defect → 用户看到空白），
+// 所以用 session.prompt(noReply:true) 往聊天区写消息 + session.abort 终止。
+async function reportErrorAndAbort(client: any, sessionID: string, message: string) {
+  try {
+    await client.session.prompt({
+      path: { id: sessionID },
+      body: {
+        parts: [{ type: "text", text: message }],
+        noReply: true,
+      },
+    });
+    await client.session.abort({ path: { id: sessionID } });
+  } catch (e) {
+    debugLog(`reportErrorAndAbort: 失败 sessionID=${sessionID} err=${(e as Error)?.message}`, sessionID);
   }
 }
 
@@ -374,22 +393,32 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
     //       但 SessionDataManager.requireSecurityAgent 可通过 session.get API 间接获取
     "chat.message": async (input) => {
       const { sessionID, agent } = input;
-      if (!agent) {
-        const errMsg = `chat.message: input 缺少 agent 字段 sessionID=${sessionID}`;
-        debugLog(errMsg, sessionID);
-        throw new Error(errMsg);
+      try {
+        if (!agent) {
+          debugLog(`chat.message: input 缺少 agent 字段 sessionID=${sessionID}`, sessionID);
+          return;
+        }
+
+        await ctx.sessionManager.upsert(sessionID, agent);
+        debugLog(`chat.message: sessionID=${sessionID} agent=${agent}`, sessionID);
+
+        // 预装依赖检查：不 ready → 往输出区写错误消息 + 终止（不 throw）
+        const preinstall = checkPreinstall(agent, sessionID);
+        if (!preinstall.ready) {
+          debugLog(`chat.message: 预装检查未通过 agent=${agent}，输出错误并终止`, sessionID);
+          await reportErrorAndAbort(ctx.client, sessionID, preinstall.message);
+          return;
+        }
+      } catch (e) {
+        // 兜底：chat.message 里的任何意外异常都不能 throw（会变 defect → 用户空白）
+        const msg = (e as Error)?.message ?? String(e);
+        debugLog(`chat.message: 意外异常 sessionID=${sessionID} err=${msg}`, sessionID);
+        try {
+          await reportErrorAndAbort(ctx.client, sessionID, `[chat.message 异常] ${msg}`);
+        } catch {
+          // reportErrorAndAbort 本身也失败了，只能靠日志
+        }
       }
-
-      // 更新 agentName + lastUserMessageAt。session 不存在时自动创建（插件重启兜底），创建失败抛异常中断 prompt。
-      await ctx.sessionManager.upsert(sessionID, agent);
-
-      debugLog(
-        `chat.message: sessionID=${sessionID} agent=${agent}`,
-        sessionID,
-      );
-
-      // 预装依赖检查：该 agent 若有未就绪的预装依赖（如 crypto-analysis 的 SageMath）→ 抛错中断本轮
-      checkPreinstallOrThrow(agent, sessionID);
     },
 
     // 上下文压缩前触发（awaited）
