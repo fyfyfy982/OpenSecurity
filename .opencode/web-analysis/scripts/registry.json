@@ -15,9 +15,18 @@
       "file": "cache_poison.py",
       "description": "Web Cache Poisoning 攻击框架：CachePoison 类（投毒、验证、Bot 触发、缓存中缓存渗出）、probe_accept_encoding（Bot AE 探测）、probe_cache_key（缓存键分析）。纯标准库，无第三方依赖",
       "params": [
-        {"name": "target_host", "desc": "靶机外网 IP"},
-        {"name": "target_port", "desc": "靶机端口"},
-        {"name": "internal_host", "desc": "Docker 内部域名（如 proxy:4000）"}
+        {
+          "name": "target_host",
+          "desc": "靶机外网 IP"
+        },
+        {
+          "name": "target_port",
+          "desc": "靶机端口"
+        },
+        {
+          "name": "internal_host",
+          "desc": "Docker 内部域名（如 proxy:4000）"
+        }
       ],
       "example_call": "$PYTHON_CMD cache_poison.py 46.62.153.171 4000 proxy:4000",
       "added_at": "2026-05-25",
@@ -55,23 +64,13 @@
       "file": "bot_analyze.py",
       "description": "Bot server.js 自动分析：提取关键参数（flag 位置、内部 URL、超时、浏览器配置）、分类 Bot 模式（单页/双页）、生成攻击时间线和策略建议。纯标准库",
       "params": [
-        {"name": "filepath", "desc": "Bot server.js 文件路径"}
+        {
+          "name": "filepath",
+          "desc": "Bot server.js 文件路径"
+        }
       ],
       "example_call": "$PYTHON_CMD bot_analyze.py /path/to/bot/server.js",
       "added_at": "2026-05-26",
-      "verified": false
-    },
-    {
-      "name": "hcaptcha_solver",
-      "file": "hcaptcha_solver.py",
-      "description": "hCaptcha 本地 ONNX 自动解决工具：HSW 解码 + msgpack 二进制响应 + ResNet/YOLO/CLIP 本地推理 + 自动刷新重试。不依赖远程视觉 API。基于 hcaptcha-challenger 0.10.1.post2",
-      "params": [
-        {"name": "--url", "desc": "目标页面 URL（必须）"},
-        {"name": "--max-attempts", "desc": "最大尝试次数（默认 10）"},
-        {"name": "--headless", "desc": "无头模式"}
-      ],
-      "example_call": "$PYTHON_CMD $AGENT_DIR/scripts/hcaptcha_solver.py --url https://example.com --max-attempts 10",
-      "added_at": "2026-06-28",
       "verified": false
     }
   ]
