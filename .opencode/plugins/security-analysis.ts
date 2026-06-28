@@ -1,5 +1,6 @@
 import { writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { spawnSync } from "child_process";
 import type { Plugin } from "@opencode-ai/plugin";
 import type { Event } from "@opencode-ai/sdk";
 import {
@@ -279,6 +280,53 @@ async function abortSession(sessionID: string, reason: string): Promise<void> {
 // 工具开始执行时间戳（tool.execute.before → tool.execute.after 配对计算耗时）
 const toolStartTimes = new Map<string, number>();
 
+// 预装依赖检查：调 detect_env --check-preinstall <agent>，若该 agent 有未就绪的预装依赖则抛错中断本轮。
+// 失败即暴露：detect_env 执行/退出码/解析任一异常都 throw（不静默跳过，便于发现问题）。
+// chat.message 每条用户消息调用一次；detect_env 此模式不自动装、不缓存，反映最新安装状态。
+function checkPreinstallOrThrow(agent: string, sessionID: string) {
+  const detectEnv = join(SHARED_DIR, "scripts", "detect_env.py");
+  const r = spawnSync(PYTHON_CMD, [detectEnv, "--check-preinstall", agent], {
+    encoding: "utf8",
+    timeout: 5000,
+  });
+  // 先打印执行结果，便于后续排查
+  debugLog(
+    `check-preinstall 结果: agent=${agent} status=${r.status} signal=${r.signal}` +
+      ` error=${r.error?.message ?? "无"}` +
+      ` stdout=${(r.stdout || "").slice(0, 500)}` +
+      ` stderr=${(r.stderr || "").slice(0, 300)}`,
+    sessionID,
+  );
+  if (r.error) {
+    debugLog(`check-preinstall: spawn 错误 agent=${agent} err=${r.error.message}`, sessionID);
+    throw new Error(`[预装检查失败] 无法执行 detect_env（agent=${agent}）：${r.error.message}`);
+  }
+  if (r.status !== 0) {
+    debugLog(`check-preinstall: 非零退出 agent=${agent} status=${r.status}`, sessionID);
+    throw new Error(
+      `[预装检查失败] detect_env 退出码 ${r.status}（agent=${agent}）：${(r.stdout || r.stderr || "").slice(0, 200)}`,
+    );
+  }
+  let result: { success?: boolean; errors?: Array<{ package?: string; install_hint?: string }> };
+  try {
+    result = JSON.parse(r.stdout);
+  } catch (e) {
+    const msg = (e as Error)?.message ?? String(e);
+    debugLog(`check-preinstall: JSON 解析失败 agent=${agent} err=${msg}`, sessionID);
+    throw new Error(`[预装检查失败] detect_env 输出非合法 JSON（agent=${agent}）：${msg}`);
+  }
+  if (result.success !== true) {
+    const hints = Array.isArray(result.errors)
+      ? result.errors.map((e) => e.install_hint).filter(Boolean).join("；")
+      : "";
+    throw new Error(
+      hints
+        ? `[预装依赖缺失] ${agent} 需要的预装依赖未就绪。请先安装：\n${hints}\n装完后重新发送消息。`
+        : `[预装检查未通过] ${agent}：detect_env 返回 success 非 true 但无 errors`,
+    );
+  }
+}
+
 export const SecurityAnalysisPlugin: Plugin = async (input) => {
   const { client, directory } = input;
 
@@ -339,6 +387,9 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
         `chat.message: sessionID=${sessionID} agent=${agent}`,
         sessionID,
       );
+
+      // 预装依赖检查：该 agent 若有未就绪的预装依赖（如 crypto-analysis 的 SageMath）→ 抛错中断本轮
+      checkPreinstallOrThrow(agent, sessionID);
     },
 
     // 上下文压缩前触发（awaited）

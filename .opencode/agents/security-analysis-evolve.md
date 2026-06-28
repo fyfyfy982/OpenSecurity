@@ -64,6 +64,14 @@ $OPENCODE_ROOT/                              # 由插件注入，项目级 .open
 │       ├── llm-attack-methodology.md     #   LLM 攻击方法论
 │       ├── prompt-injection-patterns.md  #   提示注入模式
 │       └── ...                           #   其他 AI 安全文档
+├── crypto-analysis/                       # 密码学分析工具与知识库
+│   └── knowledge-base/                   # 密码学攻击知识库（按需加载）
+│       ├── crypto-methodology.md         #   总方法论 + SageMath 基础
+│       ├── rsa-attacks.md                #   RSA 攻击
+│       ├── lattice-attacks.md            #   格攻击（LLL/HNP）
+│       ├── ecc-attacks.md                #   椭圆曲线攻击
+│       ├── classical-crypto.md           #   古典密码
+│       └── symmetric-and-hash.md         #   对称密码与哈希
 ├── commands/                              # opencode 命令目录（opencode 只把 *.md 当命令；非命令 .md 勿放，会被误识别。可含命令配套的 .py 脚本）
 └── requirements/
     └── evolve/                            # 进化需求文档（不放 commands/，避免被 opencode 当命令加载）
@@ -72,7 +80,8 @@ $OPENCODE_ROOT/                              # 由插件注入，项目级 .open
   mobile-analysis/ 可引用 binary-analysis/ 的知识库和脚本（通过 $SHARED_DIR）
   web-analysis/ 可引用 binary-analysis/ 的知识库和脚本（通过 $SHARED_DIR）
   ai-security-analysis/ 可引用 binary-analysis/ 的知识库和脚本（通过 $SHARED_DIR）
-  binary-analysis/ 不可引用 mobile-analysis/、web-analysis/ 或 ai-security-analysis/ 的内容（单向依赖）
+  crypto-analysis/ 可引用 binary-analysis/ 的知识库和脚本（通过 $SHARED_DIR）
+  binary-analysis/ 不可引用 mobile-analysis/、web-analysis/、ai-security-analysis/ 或 crypto-analysis/ 的内容（单向依赖）
 
 依赖方向（单向，禁止反向）:
   _base.py ← _utils.py ← _analysis.py ← query.py / update.py / scripts/*.py

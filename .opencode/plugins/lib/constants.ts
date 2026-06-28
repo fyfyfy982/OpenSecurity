@@ -38,6 +38,7 @@ export const AGENT_BINARY_ANALYSIS = "binary-analysis";
 export const AGENT_MOBILE_ANALYSIS = "mobile-analysis";
 export const AGENT_WEB_ANALYSIS = "web-analysis";
 export const AGENT_AI_SECURITY_ANALYSIS = "ai-security-analysis";
+export const AGENT_CRYPTO_ANALYSIS = "crypto-analysis";
 export const AGENT_SECURITY_ANALYSIS_EVOLVE = "security-analysis-evolve";
 export const AGENT_SECURITY_COORDINATOR = "security-coordinator";
 
@@ -46,6 +47,7 @@ export const SECURITY_AGENTS = [
   AGENT_MOBILE_ANALYSIS,
   AGENT_WEB_ANALYSIS,
   AGENT_AI_SECURITY_ANALYSIS,
+  AGENT_CRYPTO_ANALYSIS,
   AGENT_SECURITY_ANALYSIS_EVOLVE,
   AGENT_SECURITY_COORDINATOR,
 ];
@@ -74,7 +76,7 @@ export const COMPLETION_MARKER = ">>>COMPLETE<<<";
 export const RESUME_PROMPT =
   `你之前的分析是否已经完成了？\n` +
   `- 如果已经完成：请直接输出最终结论，然后在最后一行精确输出这个标记（原样复制，不要修改）：${COMPLETION_MARKER}\n` +
-  `- 如果尚未完成：请自主继续分析，不要停下来向用户提问。`;
+  `- 如果尚未完成：不论任何原因只要未完成，你都必须自主继续分析，不要停下来向用户提问。复盘一下之前的分析内容、结果，然后继续分析，直到完成为止。未完成的情况下绝对不允许输出 ${COMPLETION_MARKER} 标记。`;
 
 // ─── venv ──────────────────────────────────────────────────────
 

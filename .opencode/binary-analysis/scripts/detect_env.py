@@ -45,6 +45,14 @@ REQUIRED_PACKAGES = {
     "requests":      {"required": True,  "pip_name": "requests"},
     "bs4":           {"required": True,  "pip_name": "beautifulsoup4"},
     "lxml":          {"required": True,  "pip_name": "lxml"},
+    # 预装依赖（preinstall）：体积大、不自动装，由 --check-preinstall 按需检查；仅特定 agent 需要
+    "sage": {
+        "required": False,
+        "pip_name": "sagemath-standard",
+        "agents": ["crypto-analysis"],
+        "preinstall": True,
+        "note": "macOS 若 pip 路线卡住：brew install --cask sage",  # 安装命令本身由 detect_env 用 sys.executable 动态生成
+    },
 }
 
 def _load_cache(force=False):
@@ -328,6 +336,34 @@ def _detect_tools(config, agent=None, errors=None):
     return result
 
 
+def _check_preinstall(agent):
+    """检查指定 Agent 的预装依赖（preinstall 类型）是否就绪。
+    不自动装、不走 24h 缓存（必须反映用户刚装好的状态）。
+    返回 {success: bool, errors: [{package, install_hint}]}，与 detect_env 输出形状一致。
+    当前进程即 venv python（由 $PYTHON_CMD 调用），find_spec 直接查 venv site-packages。"""
+    import importlib.util
+    errors = []
+    for name, info in REQUIRED_PACKAGES.items():
+        if not info.get("preinstall"):
+            continue
+        if agent not in info.get("agents", []):
+            continue
+        try:
+            spec = importlib.util.find_spec(name)  # 查找但不执行（毫秒级，不像 import sage 那样慢）
+        except Exception as e:
+            # 不静默吞：打印并上抛，让 detect_env 非零退出 → plugin 报 [预装检查失败] 暴露问题
+            print(f"[!] _check_preinstall: find_spec({name}) 异常: {e}", file=sys.stderr)
+            raise
+        if spec is None:
+            # 安装命令动态生成：用当前 venv 的真实 python（sys.executable）+ python -m pip
+            # （不依赖 pip 二进制在 PATH 上；与 detect_env 自动安装的 sys.executable -m pip 一致）
+            install_cmd = f"{sys.executable} -m pip install {info['pip_name']}"
+            note = info.get("note")
+            install_hint = f"{install_cmd}（{note}）" if note else install_cmd
+            errors.append({"package": name, "install_hint": install_hint})
+    return {"success": len(errors) == 0, "errors": errors}
+
+
 def run_detection(skip_install=False, agent=None):
     errors = []
 
@@ -355,6 +391,8 @@ def run_detection(skip_install=False, agent=None):
 
     packages = {}
     for name, info in REQUIRED_PACKAGES.items():
+        if info.get("preinstall"):
+            continue  # 预装依赖不在此处自动装，由 --check-preinstall 单独检查
         print(f"[*] 正在检测 {name}...")
         pkg_info = _detect_package(name, version_via=info.get("version_via"))
         if not pkg_info["available"] and not skip_install:
@@ -452,9 +490,17 @@ def main():
     parser.add_argument("--skip-install", action="store_true", help="跳过自动安装缺失的包")
     parser.add_argument("--agent", help="仅检测指定 Agent 需要的工具（如 binary-analysis, mobile-analysis）",
                         default=os.environ.get("AGENT_NAME"))
+    parser.add_argument("--check-preinstall", metavar="AGENT",
+                        help="检查指定 Agent 的预装依赖是否就绪（不自动装、不缓存），输出 JSON 后退出")
     args = parser.parse_args()
 
     agent = args.agent
+
+    # --check-preinstall：独立的预装依赖检查模式，早退（不走全量检测/缓存）
+    if args.check_preinstall:
+        result = _check_preinstall(args.check_preinstall)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
 
     cached = _load_cache(force=args.force)
     if cached and not args.force:
