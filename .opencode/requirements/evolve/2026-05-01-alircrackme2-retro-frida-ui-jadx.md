@@ -46,7 +46,7 @@
 ### 改动 4：新建任务初始化共享知识库
 - **文件**: `$OPENCODE_ROOT/binary-analysis/knowledge-base/task-initialization.md`（新建）
 - **内容**:
-  - 3 步初始化流程（创建任务目录、环境检测、初始化 $BA_PYTHON）
+  - 3 步初始化流程（创建任务目录、环境检测、初始化 $PYTHON_CMD）
   - 作为 binary-analysis 和 mobile-analysis 两个 agent 阶段 0 的单一事实来源
   - 将原两个 prompt 中重复的任务目录约定和阶段 0 描述合并为一个 KB
 

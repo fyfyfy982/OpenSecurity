@@ -1,4 +1,4 @@
-# SnailNet 复盘改进 — 文件纪律 / $BA_PYTHON / Writeup 策略 / Web 公共工具
+# SnailNet 复盘改进 — 文件纪律 / $PYTHON_CMD / Writeup 策略 / Web 公共工具
 
 日期: 2026-05-24
 来源: SnailNet CTF 题目分析复盘
@@ -14,14 +14,14 @@ SnailNet Web CTF 题目（46.62.153.171:6767）完整分析过程复盘，发现
 | # | 痛点 | 严重度 | 数据支撑 |
 |---|------|--------|---------|
 | P1 | 中间文件全部散落在 workspace 根目录，任务目录为空 | 高 | workspace 根 28 个散落文件；任务目录仅 logs/ |
-| P2 | web-analysis 明确不使用 $BA_PYTHON，bs4 缺失导致执行中断 | 中 | 浪费 1 轮对话修改代码 |
+| P2 | web-analysis 明确不使用 $PYTHON_CMD，bs4 缺失导致执行中断 | 中 | 浪费 1 轮对话修改代码 |
 | P3 | 找到 writeup 后仍花 ~40% 上下文重新推导 XSS 机制 | 高 | ~5 轮工具调用，零贡献于最终结果 |
 | P4 | 多个测试脚本含重复 boilerplate（URL、session、CSRF） | 低 | 8 个 Python 脚本，公共模式重复 4+ 次 |
 
 ### 1.2 目标
 
 1. **文件放置规则**：在所有 agent 的主 prompt 中强制文件写入 $TASK_DIR，消除 knowledge-base 中的重复描述
-2. **$BA_PYTHON 对齐**：web-analysis 使用公共片段中的 $BA_PYTHON（不再覆盖）
+2. **$PYTHON_CMD 对齐**：web-analysis 使用公共片段中的 $PYTHON_CMD（不再覆盖）
 3. **Writeup 策略**：找到已验证方案后直接使用，不重新推导机制
 4. **Web 公共工具**：创建 web_helpers.py，封装 Web 分析高频操作
 
@@ -70,7 +70,7 @@ SnailNet Web CTF 题目（46.62.153.171:6767）完整分析过程复盘，发现
 
 然后从 `binary-analysis/knowledge-base/task-initialization.md` 的 Step 1 中移除文件放置描述（第 15 行 "所有中间文件写入..."），因为规则已上移到共享片段。
 
-### 2.2 方案 B：web-analysis 使用 $BA_PYTHON + Web 包安装
+### 2.2 方案 B：web-analysis 使用 $PYTHON_CMD + Web 包安装
 
 **改动文件**：
 
@@ -85,15 +85,15 @@ SnailNet Web CTF 题目（46.62.153.171:6767）完整分析过程复盘，发现
 
 当前第 42 行：
 ```
-> **web-analysis 专属说明**：本 Agent 只使用 `$AGENT_DIR`、`$SHARED_DIR`、`$TASK_DIR`，不依赖 `$IDAT` 和 `$BA_PYTHON`。
+> **web-analysis 专属说明**：本 Agent 只使用 `$AGENT_DIR`、`$SHARED_DIR`、`$TASK_DIR`，不依赖 `$IDAT` 和 `$PYTHON_CMD`。
 ```
 
 **直接删除此行**。原因：
 - `variable-initialization.md` 已定义所有变量来源，agent 按需使用，无需被告知"用哪些不用哪些"
-- 之前的"不依赖 $BA_PYTHON"反而有害（阻止 agent 使用 venv Python）
+- 之前的"不依赖 $PYTHON_CMD"反而有害（阻止 agent 使用 venv Python）
 - agent 不会无谓使用 $IDAT（Web 分析场景没有 IDA 数据库）
 
-效果：`variable-initialization.md` 中的 $BA_PYTHON 初始化规则自然对 web-analysis 生效，无需额外改动。
+效果：`variable-initialization.md` 中的 $PYTHON_CMD 初始化规则自然对 web-analysis 生效，无需额外改动。
 
 **方案详情（2）：detect_env.py 加入 web 分析包 + AGENT_NAME 环境变量**
 
@@ -183,7 +183,7 @@ REQUIRED_PACKAGES = {
 - 每个函数可独立使用（不强制组合调用）
 - 不封装过度 — 只收口 3 次以上重复出现的模式
 - 错误处理明确（抛异常，不静默返回）
-- 依赖 requests + bs4（通过 $BA_PYTHON 调用，venv 中已安装）
+- 依赖 requests + bs4（通过 $PYTHON_CMD 调用，venv 中已安装）
 - CSRF 提取使用 bs4（比正则更健壮，能处理各种 HTML 边界情况）
 
 **调用方式**：web_helpers.py 是库模块（被 import），不是命令行工具。在临时脚本中通过以下方式使用：
@@ -236,7 +236,7 @@ from web_helpers import create_session, get_csrf, register_and_login
 步骤 3. web-analysis.md 删除变量覆盖语句
   - 文件: agents/web-analysis.md
   - 预估行数: -1 行（删除第 42 行）
-  - 验证点: 第 42 行不存在"专属说明"块引用；variable-initialization.md 的 $BA_PYTHON 规则不再被覆盖
+  - 验证点: 第 42 行不存在"专属说明"块引用；variable-initialization.md 的 $PYTHON_CMD 规则不再被覆盖
   - 依赖: 无
 
 步骤 4. detect_env.py 添加 web 分析包 + AGENT_NAME 环境变量支持
@@ -292,7 +292,7 @@ from web_helpers import create_session, get_csrf, register_and_login
 ### 3.2 编码规则
 
 - Markdown: 遵循现有片段的格式（表格、标题层级、代码块）
-- Python (web_helpers.py): 使用 type hints、docstring、中文日志；依赖 requests + bs4（通过 $BA_PYTHON 调用）
+- Python (web_helpers.py): 使用 type hints、docstring、中文日志；依赖 requests + bs4（通过 $PYTHON_CMD 调用）
 - JSON (registry.json): 遵循 binary-analysis/scripts/registry.json 的格式
 - 路径: 禁止硬编码绝对路径，必须使用 $AGENT_DIR / $SHARED_DIR / $TASK_DIR 变量
 
@@ -311,10 +311,10 @@ from web_helpers import create_session, get_csrf, register_and_login
 | F4 | detect_env.py 包含 requests、bs4、lxml | Grep 确认 REQUIRED_PACKAGES 中有这三个包 |
 | F4.5 | detect_env.py `--agent` 支持环境变量 AGENT_NAME，命令行参数优先级更高 | Grep "AGENT_NAME" 确认存在 |
 | F4.6 | Plugin 注入 AGENT_NAME 环境变量 | Read tool.execute.before 确认与 SESSION_ID 并列注入 |
-| F5 | web_helpers.py 可 import 且无语法错误 | `$BA_PYTHON -c "import sys; sys.path.insert(0,...); import web_helpers"` |
+| F5 | web_helpers.py 可 import 且无语法错误 | `$PYTHON_CMD -c "import sys; sys.path.insert(0,...); import web_helpers"` |
 | F6 | registry.json 格式正确 | `python -c "import json; json.load(open(...))"` |
 | F7 | web-analysis.md 工具清单引用 web_helpers.py | Read 确认 |
-| F8 | venv 可 import requests、bs4、lxml | `$BA_PYTHON -c "import requests; import bs4; import lxml"` |
+| F8 | venv 可 import requests、bs4、lxml | `$PYTHON_CMD -c "import requests; import bs4; import lxml"` |
 
 ### 4.2 回归验收
 
@@ -331,7 +331,7 @@ from web_helpers import create_session, get_csrf, register_and_login
 | A1 | 文件放置规则只存在一份（execution-discipline.md），不重复 |
 | A2 | web-analysis/scripts/ 遵循归档规则（agent 专属目录） |
 | A3 | 依赖方向正确: web-analysis 可引用 shared (binary-analysis)，不反向 |
-| A4 | web_helpers.py 通过 $BA_PYTHON 调用（venv 中有 requests + bs4 + lxml），不要求系统 Python 可用 |
+| A4 | web_helpers.py 通过 $PYTHON_CMD 调用（venv 中有 requests + bs4 + lxml），不要求系统 Python 可用 |
 | A5 | AGENT_NAME 通过 Plugin 环境变量自动注入，文档中不硬编码 `--agent` 参数 |
 
 ---

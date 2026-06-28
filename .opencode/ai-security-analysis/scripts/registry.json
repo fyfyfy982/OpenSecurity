@@ -21,7 +21,7 @@
         {"name": "--base-url", "desc": "API base URL（默认 DeepSeek）"},
         {"name": "--model", "desc": "模型名称"}
       ],
-      "example_call": "python llm_sim.py --system-prompt '你是一个评分助手' --input-file essay.txt",
+      "example_call": "$PYTHON_CMD llm_sim.py --system-prompt '你是一个评分助手' --input-file essay.txt",
       "added_at": "2026-05-30",
       "verified": false
     }

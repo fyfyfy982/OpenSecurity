@@ -216,6 +216,7 @@ permission:
 | `$AGENT_DIR/scripts/markdown_fuzz.py` | 无（纯标准库） | Markdown 解析器 XSS 注入系统化测试（8 种分类，30+ payload） | `MarkdownFuzzer`（类）、`generate_payloads`、`PayloadCategory` |
 | `$AGENT_DIR/scripts/sandbox_escape.py` | 无（纯标准库） | iframe sandbox 逃逸 payload 生成：sandbox 测试 JS、控制器页面、notebook 注入、SSO blob URL 绕过 | `generate_sandbox_test_payload`、`generate_controller_page`、`generate_notebook_payload`、`generate_sso_bypass_url` |
 | `$AGENT_DIR/scripts/bot_analyze.py` | 无（纯标准库） | Bot server.js 自动分析：提取关键参数、分类模式（单页/双页）、生成攻击时间线 | `analyze_bot_file`、`analyze_bot_code`、`BotAnalysis` |
+| `$AGENT_DIR/scripts/hcaptcha_solver.py` | hcaptcha-challenger 0.10.1.post2 + onnxruntime + opencv + msgpack | hCaptcha 本地 ONNX 自动解决：HSW 解码 + msgpack 二进制响应 + ResNet/YOLO/CLIP 本地推理 + 自动刷新重试。**不依赖远程视觉 API** | `HCaptchaSolver`（类：`solve`/`_patch_handler`），CLI: `--url <URL> --max-attempts N` |
 
 **使用方式**（在临时脚本中）：
 
@@ -266,6 +267,7 @@ from bot_analyze import analyze_bot_file
 | `bot-patterns.md` | 分析 Bot server.js 时。Bot 代码通用结构、单页/双页模式快速分类、安全决策分析（URL 验证、httpOnly、Docker Chromium 特性）、攻击链决策树 |
 | `js-obfuscation-patterns.md` | 分析 JS 逆向题/混淆代码时。不可见 Unicode 字符、tagged template 隐式调用、Function.call 空函数、原型链劫持、debug condition 副作用 |
 | `browser-debugging.md` | 需要浏览器自动化/远程调试时。CDP 核心 API、Playwright + CDP 模式、debug() API、常见陷阱 |
+| `hcaptcha-solving.md` | 需要自动通过 hCaptcha 验证时（CTF bot 提交、自动注册）。本地 ONNX 推理管线、HSW 解码、CSP 绕过、objects.yaml 恢复、已知限制和成功率 |
 
 ### 通用知识库（$SHARED_DIR/knowledge-base/）
 

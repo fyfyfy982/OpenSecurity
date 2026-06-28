@@ -109,7 +109,7 @@ delegate_analysis tool (Plugin tool)
    - 所有中间文件、临时脚本、输出、报告写入此目录
 2. **跳过阶段 0 的"创建任务目录"步骤**: 不要调用 create_task_dir.py
    - 环境检测仍需执行: `python3 "$SHARED_DIR/scripts/detect_env.py" --output "$TASK_DIR/env.json"`
-   - $BA_PYTHON 初始化仍需执行
+   - $PYTHON_CMD 初始化仍需执行
 3. **结果格式要求**:
    - 详细分析报告写入 $TASK_DIR/report.md
    - 你返回的文本必须是结构化摘要，格式如下:

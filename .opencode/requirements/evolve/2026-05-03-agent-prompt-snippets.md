@@ -34,7 +34,7 @@ Agent .md（带 {{buwai-rule:xxx}} 占位符）
 | 片段文件 | 内容 | 行数 |
 |---------|------|:----:|
 | `running-environment.md` | 运行环境 + 跨平台规则 | 4 |
-| `variable-initialization.md` | 变量初始化表 + $BA_PYTHON 强制规则 | 10 |
+| `variable-initialization.md` | 变量初始化表 + $PYTHON_CMD 强制规则 | 10 |
 | `task-initialization.md` | 阶段 0 三步初始化 + 失败/缓存规则 | 8 |
 | `analysis-planning-rules.md` | 阶段 B 分析规划 5 条核心规则 | 5 |
 | `execution-discipline.md` | 阶段 C 执行纪律表 | 10 |
@@ -273,9 +273,9 @@ function loadSnippet(name: string): string | null {
 | `$AGENT_DIR` | 环境信息"Agent 目录 ($AGENT_DIR)" | 本 Agent 的工具目录 |
 | `$SHARED_DIR` | 环境信息"共享目录 ($SHARED_DIR)" | 共享分析能力目录 |
 | `$IDAT` | 环境信息"IDA Pro"路径 + `/idat` | 需检查文件存在性 |
-| `$BA_PYTHON` | 阶段 0 env.json 的 `venv_python` | 带第三方包的 venv Python |
+| `$PYTHON_CMD` | 阶段 0 env.json 的 `venv_python` | 带第三方包的 venv Python |
 
-**强制**：带第三方包的 Python 脚本必须用 `$BA_PYTHON`，禁止用系统 Python（仅 `detect_env.py` 例外）。
+**强制**：带第三方包的 Python 脚本必须用 `$PYTHON_CMD`，禁止用系统 Python（仅 `detect_env.py` 例外）。
 ```
 
 ### task-initialization.md
@@ -285,7 +285,7 @@ function loadSnippet(name: string): string | null {
 
 1. **创建任务目录**：`TASK_DIR=$(python3 "$SHARED_DIR/scripts/create_task_dir.py")`
 2. **环境检测**：`python3 "$SHARED_DIR/scripts/detect_env.py" --output "$TASK_DIR/env.json"`
-3. **初始化 $BA_PYTHON**：从 `~/bw-security-analysis/env_cache.json` 提取 `venv_python`
+3. **初始化 $PYTHON_CMD**：从 `~/bw-security-analysis/env_cache.json` 提取 `venv_python`
 
 环境检测失败 → **停下来告知用户，禁止继续**。环境检测结果缓存 24h（`~/bw-security-analysis/env_cache.json`），无需每次重新检测。
 ```

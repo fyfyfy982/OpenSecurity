@@ -29,7 +29,7 @@
 
 ### 方案 A: process_patch.py
 
-**架构位置**: `.opencode/binary-analysis/scripts/process_patch.py`（独立 Python 工具，通过 `$BA_PYTHON` 运行，不依赖 IDA）
+**架构位置**: `.opencode/binary-analysis/scripts/process_patch.py`（独立 Python 工具，通过 `$PYTHON_CMD` 运行，不依赖 IDA）
 
 **核心设计**: 将 CRACKME3 中重复 10+ 次的进程管理/内存操作/信号同步模式提取为命令行工具。Agent 只需提供 patch 点地址和新字节，code cave 机器码，无需写 OpenProcess/VirtualProtectEx 等样板。
 
@@ -148,7 +148,7 @@ process_patch.py --exe TARGET [--window-title TITLE] \
 
 ### 编码规则
 
-1. `process_patch.py` 是独立 Python 脚本（不依赖 IDA），通过 `$BA_PYTHON` 运行
+1. `process_patch.py` 是独立 Python 脚本（不依赖 IDA），通过 `$PYTHON_CMD` 运行
 2. 遵循现有脚本风格：argparse 参数解析、JSON 输出、中文日志（print）
 3. 所有 ctypes 操作需要错误处理（get_last_error）
 4. 进程启动后必须有 cleanup（try/finally 中 TerminateProcess）

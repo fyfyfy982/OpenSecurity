@@ -138,7 +138,7 @@ python --version 成功  → "python"
 - [ ] 其他 agent prompt 不受影响（binary-analysis、mobile-analysis 通过 `{{buwai-rule:task-initialization}}` 读取更新后的知识库）
 
 ### 架构验收
-- [ ] `$PYTHON_CMD` 和 `$BA_PYTHON` 并存不冲突（系统 Python vs venv Python）
+- [ ] `$PYTHON_CMD` 和 `$PYTHON_CMD` 并存不冲突（系统 Python vs venv Python）
 - [ ] 检测结果仅在 Plugin 进程内缓存，不写入文件（检测成本可忽略）
 
 ---

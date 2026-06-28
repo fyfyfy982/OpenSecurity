@@ -74,7 +74,7 @@
 - 坐标系统：`pyautogui.screenshot()` 和 `pyautogui.click()` 坐标系一致，无需映射
 - 错误处理：pyautogui 不可用 → `{"success": false, "error": "pyautogui 未安装"}`
 - 脚本自动创建输出目录（如果不存在）
-- 通过 `$BA_PYTHON` 执行（依赖第三方包 pyautogui）
+- 通过 `$PYTHON_CMD` 执行（依赖第三方包 pyautogui）
 
 ---
 
@@ -221,7 +221,7 @@ kill:
 
 ## 前提条件
 
-- 需要 `pyautogui` 和 `pyperclip`（通过 `$BA_PYTHON` 运行脚本）
+- 需要 `pyautogui` 和 `pyperclip`（通过 `$PYTHON_CMD` 运行脚本）
 - 需要 `zai-mcp-server` MCP（视觉理解能力）
 - 脚本路径: `$SCRIPTS_DIR/scripts/gui_capture.py` / `gui_act.py` / `gui_launch.py`
 
@@ -229,18 +229,18 @@ kill:
 
 ### Step 1: 启动目标程序
 ```
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_launch.py --action launch --exe <TARGET>
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_launch.py --action launch --exe <TARGET>
 ```
 记录返回的 PID。
 
 ### Step 2: 等待窗口出现
 ```
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_launch.py --action wait_window --pid <PID> --timeout 10
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_launch.py --action wait_window --pid <PID> --timeout 10
 ```
 
 ### Step 3: 截图定位控件
 ```
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --name step1_initial
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --name step1_initial
 ```
 
 使用 MCP 分析截图:
@@ -250,24 +250,24 @@ $BA_PYTHON $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --nam
 ### Step 4: 执行操作序列（连续执行，中间不截图）
 ```
 # 点击输入框
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_act.py --action click --x 460 --y 320
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_act.py --action click --x 460 --y 320
 
 # 输入文本（推荐 paste 模式，支持中文）
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_act.py --action type --text "username" --paste
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_act.py --action type --text "username" --paste
 
 # 点击下一个输入框
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_act.py --action click --x 460 --y 380
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_act.py --action click --x 460 --y 380
 
 # 输入 license
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_act.py --action type --text "XXXX-XXXX" --paste
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_act.py --action type --text "XXXX-XXXX" --paste
 
 # 点击验证按钮
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_act.py --action click --x 500 --y 440 --settle 1
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_act.py --action click --x 500 --y 440 --settle 1
 ```
 
 ### Step 5: 截图读取结果
 ```
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --name step2_result
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --name step2_result
 ```
 
 使用 MCP 判断结果:
@@ -276,7 +276,7 @@ $BA_PYTHON $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --nam
 
 ### Step 6: 清理
 ```
-$BA_PYTHON $SCRIPTS_DIR/scripts/gui_launch.py --action kill --pid <PID>
+$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_launch.py --action kill --pid <PID>
 ```
 
 ## 失败重试策略
@@ -384,7 +384,7 @@ description: GUI 自动化交互 — 截图、视觉识别、键鼠操作
   "file": "gui_capture.py",
   "description": "全屏截图工具，输出 JPEG/PNG 图片 + 元数据 JSON",
   "params": ["--output-dir", "--name", "--format", "--quality"],
-  "example_call": "$BA_PYTHON $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --name step1_initial",
+  "example_call": "$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_capture.py --output-dir $TASK_DIR/view --name step1_initial",
   "added_at": "2026-04-24",
   "verified": false
 },
@@ -393,7 +393,7 @@ description: GUI 自动化交互 — 截图、视觉识别、键鼠操作
   "file": "gui_act.py",
   "description": "坐标级键鼠操作（click/type/hotkey/scroll），支持剪贴板粘贴",
   "params": ["--action", "--x", "--y", "--text", "--keys", "--direction", "--clicks", "--button", "--paste", "--settle"],
-  "example_call": "$BA_PYTHON $SCRIPTS_DIR/scripts/gui_act.py --action click --x 460 --y 320",
+  "example_call": "$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_act.py --action click --x 460 --y 320",
   "added_at": "2026-04-24",
   "verified": false
 },
@@ -402,7 +402,7 @@ description: GUI 自动化交互 — 截图、视觉识别、键鼠操作
   "file": "gui_launch.py",
   "description": "进程和窗口管理（launch/find_window/bring_to_front/kill），P0 仅 Windows",
   "params": ["--action", "--exe", "--pid", "--title", "--timeout"],
-  "example_call": "$BA_PYTHON $SCRIPTS_DIR/scripts/gui_launch.py --action launch --exe TARGET.EXE",
+  "example_call": "$PYTHON_CMD $SCRIPTS_DIR/scripts/gui_launch.py --action launch --exe TARGET.EXE",
   "added_at": "2026-04-24",
   "verified": false
 }
@@ -434,39 +434,39 @@ description: GUI 自动化交互 — 截图、视觉识别、键鼠操作
 
 ```bash
 # 启动目标程序
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_launch.py" --action launch --exe <TARGET>
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_launch.py" --action launch --exe <TARGET>
 
 # 截图定位控件
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/view" --name step1_initial
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/view" --name step1_initial
 
 # 键鼠操作（MCP 返回坐标后执行）
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_act.py" --action click --x 460 --y 320
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_act.py" --action type --text "license" --paste
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_act.py" --action click --x 460 --y 320
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_act.py" --action type --text "license" --paste
 
 # 截图读结果
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/view" --name step2_result
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_capture.py" --output-dir "$TASK_DIR/view" --name step2_result
 
 # 清理
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_launch.py" --action kill --pid <PID>
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_launch.py" --action kill --pid <PID>
 ```
 
 #### 降级方案（MCP 不可用时）: gui_verify.py
 
 ```bash
 # 标准模式
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --username <USER> --license <LICENSE> --output "$TASK_DIR/gui_result.json"
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --username <USER> --license <LICENSE> --output "$TASK_DIR/gui_result.json"
 
 # 控件探测（ID 未知时先探测）
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --discover --output "$TASK_DIR/discover.json"
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --discover --output "$TASK_DIR/discover.json"
 
 # Hook 注入（GUI 输入不进去时，推荐用文件传参避免转义问题）
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --hook-inject --hook-func-addr 0x401000 --hook-inputs-file "$TASK_DIR/inputs.json" --output "$TASK_DIR/result.json"
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --hook-inject --hook-func-addr 0x401000 --hook-inputs-file "$TASK_DIR/inputs.json" --output "$TASK_DIR/result.json"
 
 # Hook 读取结果（读不出结果时）
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --username <USER> --license <LICENSE> --hook-result --hook-compare-addr 0x401200 --output "$TASK_DIR/result.json"
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --username <USER> --license <LICENSE> --hook-result --hook-compare-addr 0x401200 --output "$TASK_DIR/result.json"
 
 # Hook 注入 + Hook 读取结果 组合模式（GUI 无法输入也无法读取结果时）
-"$BA_PYTHON" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --hook-inject --hook-func-addr 0x401000 --hook-inputs-file "$TASK_DIR/inputs.json" --hook-result --hook-compare-addr 0x401200 --hook-trigger-addr 0x401500 --output "$TASK_DIR/result.json"
+"$PYTHON_CMD" "$SCRIPTS_DIR/scripts/gui_verify.py" --exe <TARGET> --hook-inject --hook-func-addr 0x401000 --hook-inputs-file "$TASK_DIR/inputs.json" --hook-result --hook-compare-addr 0x401200 --hook-trigger-addr 0x401500 --output "$TASK_DIR/result.json"
 ```
 ```
 
@@ -491,7 +491,7 @@ description: GUI 自动化交互 — 截图、视觉识别、键鼠操作
 ### 编码规则
 
 1. 新脚本（gui_capture.py/gui_act.py/gui_launch.py）是**纯 Python 脚本**，不依赖 IDA 运行时，不使用 `_base.py` 基础设施
-2. 通过 `$BA_PYTHON` 执行（依赖 pyautogui/pyperclip 第三方包）
+2. 通过 `$PYTHON_CMD` 执行（依赖 pyautogui/pyperclip 第三方包）
 3. 所有脚本输出 JSON（成功 `{"success": true, ...}` / 失败 `{"success": false, "error": "..."}`）
 4. 日志使用中文，关键步骤有 `[*]`/`[+]`/`[!]` 日志
 5. gui-automation.md 必须自包含（不依赖主 prompt 上下文即可理解）
@@ -579,5 +579,5 @@ description: GUI 自动化交互 — 截图、视觉识别、键鼠操作
 | 现有需求 | 关系 |
 |---------|------|
 | `2026-04-23-verification-framework.md` | 本需求在其验证决策树基础上新增视觉驱动 GUI 方案，将 gui_verify.py 从主路径降级为后备路径。gui_verify.py 代码本身不改动 |
-| `2026-04-22-environment-dependency-hardening.md` | 新脚本依赖 pyautogui/pyperclip，通过 `$BA_PYTHON` 执行，环境检测由该需求保障 |
+| `2026-04-22-environment-dependency-hardening.md` | 新脚本依赖 pyautogui/pyperclip，通过 `$PYTHON_CMD` 执行，环境检测由该需求保障 |
 | `2026-04-22-plugin-and-architecture-improvements.md` | 无直接关系，本需求不改 Plugin |

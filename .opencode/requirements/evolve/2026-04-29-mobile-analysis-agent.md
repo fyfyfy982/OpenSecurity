@@ -174,7 +174,7 @@
 ```
 流程：
 1. 尝试从 input.sessionID 查 sessionAgentMap → 获取 agentName
-2. input.sessionID 为 undefined（该 hook 中 sessionID 可选）→ agentName 为 undefined → 注入通用环境信息（IDA 路径 + 全部 tools + BA_PYTHON + packages）
+2. input.sessionID 为 undefined（该 hook 中 sessionID 可选）→ agentName 为 undefined → 注入通用环境信息（IDA 路径 + 全部 tools + PYTHON_CMD + packages）
 3. agentName 已知 → 注入该 agent 的环境信息子集
 ```
 
@@ -186,7 +186,7 @@
 | 编译器 | 注入 | 注入（移动端也可能需要编译求解器、Frida gadget 等） | env_cache.json compiler |
 | Python 包 | 注入（全部） | 注入（全部） | env_cache.json packages |
 | 外部工具路径 | 不注入 | 注入（config.json tools 中 agents 含 mobile-analysis 的） | config.json 过滤 + env_cache.json 可用性 |
-| BA_PYTHON | 注入 | 注入 | env_cache.json venv_python |
+| PYTHON_CMD | 注入 | 注入 | env_cache.json venv_python |
 
 **外部工具路径过滤逻辑**：
 ```ts
@@ -491,7 +491,7 @@ IPA 分析需求
 | 章节 | 行数 | 内容 |
 |------|------|------|
 | 元信息 + 角色 | ~15 | description="移动应用逆向分析编排器"、mode=primary、permission |
-| 运行环境 + 变量 | ~55 | `$SCRIPTS_DIR`、`$IDA_SCRIPTS_DIR`、`$TASK_DIR`、`$BA_PYTHON` 初始化 |
+| 运行环境 + 变量 | ~55 | `$SCRIPTS_DIR`、`$IDA_SCRIPTS_DIR`、`$TASK_DIR`、`$PYTHON_CMD` 初始化 |
 | 阶段 0：环境检测 | ~20 | 调用 `$IDA_SCRIPTS_DIR/scripts/detect_env.py`，读取 env_cache.json |
 | 阶段 A：初始分析 | ~50 | 文件类型检测（APK/IPA）→ 多路径分流 → 按场景选择工具链 |
 | 阶段 B：分析规划 | ~25 | 场景驱动 + 知识库按需加载 |
@@ -624,7 +624,7 @@ IPA 分析需求
   - 内容要点:
     1. YAML frontmatter: description、mode=primary、permission
     2. 角色定义：移动应用逆向分析编排器
-    3. 变量初始化：$SCRIPTS_DIR、$IDA_SCRIPTS_DIR、$TASK_DIR、$BA_PYTHON
+    3. 变量初始化：$SCRIPTS_DIR、$IDA_SCRIPTS_DIR、$TASK_DIR、$PYTHON_CMD
     4. 阶段 0：调用 $IDA_SCRIPTS_DIR/scripts/detect_env.py
     5. 阶段 A：文件类型检测 + 多路径分析决策（场景→路径→工具）
     6. 阶段 B：场景驱动的分析规划
@@ -741,7 +741,7 @@ IPA 分析需求
   - 文件: 无新文件
   - 预估行数: 0
   - 验证点:
-    1. binary-analysis Agent 环境注入与改造前完全一致（IDA 路径、编译器、Python 包、BA_PYTHON）
+    1. binary-analysis Agent 环境注入与改造前完全一致（IDA 路径、编译器、Python 包、PYTHON_CMD）
     2. binary-analysis Agent 工作流正常（查询 + 反编译 + 更新）
     3. mobile-analysis Agent 能被 OpenCode 识别为 primary agent（Tab 切换可见）
     4. mobile-analysis Agent prompt 加载正确（$SCRIPTS_DIR + $IDA_SCRIPTS_DIR 均被注入）

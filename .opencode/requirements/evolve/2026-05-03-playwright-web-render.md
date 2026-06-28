@@ -33,7 +33,7 @@
 ### 2.3 web_render.py 接口设计
 
 ```
-用法: $BA_PYTHON $SHARED_DIR/scripts/web_render.py [选项]
+用法: $PYTHON_CMD $SHARED_DIR/scripts/web_render.py [选项]
 
 选项:
   --url URL                  目标 URL（必须 http:// 或 https://）
@@ -128,9 +128,9 @@ agents/
 - 预估行数: ~120 行
 - 验证点:
   1. `python -c "compile(...)"` 语法检查通过
-  2. `$BA_PYTHON web_render.py --help` 输出正确的参数说明
-  3. `$BA_PYTHON web_render.py --url https://example.com --format markdown` 返回包含 HTML 内容的 JSON
-  4. `$BA_PYTHON web_render.py --url https://example.com --format markdown --screenshot /tmp/test.jpg` 返回 JSON 并生成截图文件
+  2. `$PYTHON_CMD web_render.py --help` 输出正确的参数说明
+  3. `$PYTHON_CMD web_render.py --url https://example.com --format markdown` 返回包含 HTML 内容的 JSON
+  4. `$PYTHON_CMD web_render.py --url https://example.com --format markdown --screenshot /tmp/test.jpg` 返回 JSON 并生成截图文件
 - 依赖: 步骤 1（需要 playwright 已安装）
 
 **步骤 3. 更新 registry.json**

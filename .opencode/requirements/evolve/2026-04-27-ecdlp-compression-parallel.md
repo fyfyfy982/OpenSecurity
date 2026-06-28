@@ -78,7 +78,7 @@
 const envData = readJsonSafe(ENV_CACHE_FILE);
 let envSummary = "## 环境信息（压缩时自动注入）\n";
 if (envData?.data) {
-  envSummary += `- BA_PYTHON: ${envData.data.venv_python || '未知'}\n`;
+  envSummary += `- PYTHON_CMD: ${envData.data.venv_python || '未知'}\n`;
   // ... 其他字段（参照 system.transform 中的逻辑独立构建，不修改 system.transform）
 }
 output.context.push(envSummary);

@@ -90,7 +90,7 @@ def _detect_package(name, venv_python):
 3. 自动安装失败 → 打印手动安装命令 → 标记为不可用
 4. 全部必需包检测完成后，如有缺失的必需包 → 返回 `success: false` 并列出安装命令
 
-#### 新增 BA_PYTHON 概念
+#### 新增 PYTHON_CMD 概念
 
 `detect_env.py` 成功后，在输出 JSON 中新增 `venv_python` 字段:
 
@@ -105,7 +105,7 @@ def _detect_package(name, venv_python):
 }
 ```
 
-### A3: 修改 Agent prompt + templates.md — 统一使用 $BA_PYTHON
+### A3: 修改 Agent prompt + templates.md — 统一使用 $PYTHON_CMD
 
 **改动文件**: `.opencode/agents/binary-analysis.md`, `.opencode/binary-analysis/knowledge-base/templates.md`
 
@@ -114,18 +114,18 @@ def _detect_package(name, venv_python):
 | 调用类型 | 使用变量 | 说明 |
 |---------|---------|------|
 | 内联 Python 一行命令（预检查、路径计算、TASK_DIR 创建） | `python3`/`python` | 不需要第三方包，在 venv 创建前就可能执行 |
-| 运行独立脚本文件（gui_verify.py、Unicorn 脚本、Frida 脚本） | `$BA_PYTHON` | 需要 capstone/unicorn/gmpy2/frida |
-| 运行 detect_env.py | `python3`/`python` | detect_env.py 本身创建 venv，不能用 $BA_PYTHON |
+| 运行独立脚本文件（gui_verify.py、Unicorn 脚本、Frida 脚本） | `$PYTHON_CMD` | 需要 capstone/unicorn/gmpy2/frida |
+| 运行 detect_env.py | `python3`/`python` | detect_env.py 本身创建 venv，不能用 $PYTHON_CMD |
 | 运行 idat + IDAPython 脚本 | `$IDAT` | IDA 内置 Python，独立环境 |
 
-templates.md 中只有 gui_verify.py、Unicorn 脚本、Frida 脚本的调用替换为 `$BA_PYTHON`。其余保持 `python3`/`python`。
+templates.md 中只有 gui_verify.py、Unicorn 脚本、Frida 脚本的调用替换为 `$PYTHON_CMD`。其余保持 `python3`/`python`。
 
 变量初始化章节新增（**移到阶段 0 detect_env.py 成功之后**）:
 
 bash:
 ```bash
-# 阶段 0 成功后，从 env_cache.json 提取 BA_PYTHON
-BA_PYTHON=$(python3 -c "
+# 阶段 0 成功后，从 env_cache.json 提取 PYTHON_CMD
+PYTHON_CMD=$(python3 -c "
 import json, os, sys
 cache_path = os.path.expanduser('~/bw-security-analysis/env_cache.json')
 if os.path.isfile(cache_path):
@@ -138,18 +138,18 @@ else:
 
 PowerShell:
 ```powershell
-$BA_PYTHON = python -c "import json,os,sys; p=os.path.expanduser('~/bw-security-analysis/env_cache.json'); print(json.load(open(p)).get('data',{}).get('venv_python','python')) if os.path.isfile(p) else print('python')"
+$PYTHON_CMD = python -c "import json,os,sys; p=os.path.expanduser('~/bw-security-analysis/env_cache.json'); print(json.load(open(p)).get('data',{}).get('venv_python','python')) if os.path.isfile(p) else print('python')"
 ```
 
-### A4: 修改 Plugin — 注入 BA_PYTHON
+### A4: 修改 Plugin — 注入 PYTHON_CMD
 
 **改动文件**: `.opencode/plugins/security-analysis.ts`
 
-`system.transform` hook 注入 `BA_PYTHON` 路径:
+`system.transform` hook 注入 `PYTHON_CMD` 路径:
 
 ```javascript
 if (envData?.data?.venv_python) {
-  envSection += `- BA_PYTHON: ${envData.data.venv_python}\n`;
+  envSection += `- PYTHON_CMD: ${envData.data.venv_python}\n`;
 }
 ```
 
@@ -191,15 +191,15 @@ if (envData?.data?.venv_python) {
 
 - [ ] Agent prompt 阶段 0 标记为"强制"，不可跳过
 - [ ] Agent prompt 明确: `success: false` → 必须停下来告知用户
-- [ ] `detect_env.py` 始终用系统 Python 运行（不用 $BA_PYTHON）
+- [ ] `detect_env.py` 始终用系统 Python 运行（不用 $PYTHON_CMD）
 - [ ] `detect_env.py` 自动创建 venv，创建失败时返回 `success: false` 并给出手动命令
 - [ ] `_detect_package` 通过 venv Python 子进程检测（非 `__import__`）
 - [ ] `detect_env.py` 保留自动安装（用 venv pip），安装失败标记为不可用
 - [ ] 必需包缺失时返回 `success: false` 并列出安装命令
 - [ ] `detect_env.py` 输出 `venv_python` 字段
-- [ ] Plugin 注入 `BA_PYTHON` 路径
-- [ ] templates.md 中独立脚本调用使用 `$BA_PYTHON`（内联 Python 一行命令保持 `python3`/`python`）
-- [ ] `$BA_PYTHON` 赋值在阶段 0 成功之后执行（env_cache.json 不存在时回退到 `python3`/`python`）
+- [ ] Plugin 注入 `PYTHON_CMD` 路径
+- [ ] templates.md 中独立脚本调用使用 `$PYTHON_CMD`（内联 Python 一行命令保持 `python3`/`python`）
+- [ ] `$PYTHON_CMD` 赋值在阶段 0 成功之后执行（env_cache.json 不存在时回退到 `python3`/`python`）
 
 ### 回归验收
 
@@ -217,5 +217,5 @@ if (envData?.data?.venv_python) {
 ## §5 与现有需求文档的关系
 
 - 本文档是第四轮进化
-- 与第三轮（comprehensive-review-fixes.md）的 R1 变量初始化方案叠加: 在原有 `$SCRIPTS_DIR`/`$IDAT` 基础上新增 `$BA_PYTHON`
+- 与第三轮（comprehensive-review-fixes.md）的 R1 变量初始化方案叠加: 在原有 `$SCRIPTS_DIR`/`$IDAT` 基础上新增 `$PYTHON_CMD`
 - 第三轮的 O2（classify_scene packages 参数）依赖 env_cache.json，本轮改动不影响
