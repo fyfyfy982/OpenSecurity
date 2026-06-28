@@ -1,5 +1,5 @@
 import { writeFileSync, existsSync } from "fs";
-import { join } from "path";
+import { join, dirname, delimiter } from "path";
 import type { Plugin } from "@opencode-ai/plugin";
 import type { Event } from "@opencode-ai/sdk";
 import {
@@ -440,6 +440,8 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       }
       sessionData.activelyTerminated = false;
       sessionData.pendingErrorMessage = null;
+      // 用户新消息 = 新一轮对话，上一轮植入的 resumeMarker 不再相关，清空避免误判
+      sessionData.resumeMarker = null;
       } catch (e) {
         // 兜底：chat.message 里的任何意外异常都不能 throw（会变 defect → 用户空白）
         const msg = (e as Error)?.message ?? String(e);
@@ -655,6 +657,11 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
       const pythonCmd = getPythonCmd();
       if (pythonCmd) {
         output.env.PYTHON_CMD = pythonCmd;
+        // PATH: 前置 venv/bin，使 venv 的 CLI 工具(sage 等)直接可用
+        const venvBin = dirname(pythonCmd);
+        // filter(Boolean) 过滤空值，避免末尾分隔符(空 PATH 条目会被解释为当前目录，有 PATH injection 风险)
+        // delimiter 跨平台: POSIX=':' Windows=';'（与 constants.ts 的 Windows 支持一致）
+        output.env.PATH = [venvBin, process.env.PATH].filter(Boolean).join(delimiter);
       }
       output.env.OPENCODE_ROOT = OPENCODE_ROOT;
       output.env.SHARED_DIR = SHARED_DIR;
@@ -686,7 +693,8 @@ export const SecurityAnalysisPlugin: Plugin = async (input) => {
           ` AGENT_DIR=${scriptDir ?? "无"}` +
           ` SHARED_DIR=${output.env.SHARED_DIR}` +
           ` TASK_DIR=${taskDir ?? "无"}` +
-          ` IDAT=${output.env.IDAT ?? "无"}`,
+          ` IDAT=${output.env.IDAT ?? "无"}` +
+          ` PATH=${output.env.PATH ? "已注入venv/bin" : "无"}`,
         sessionID,
       );
     },
