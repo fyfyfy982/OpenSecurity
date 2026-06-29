@@ -1,9 +1,8 @@
-import { join } from "path";
-import { readFileSync, writeFileSync } from "fs";
 import {
   MAX_DURATION_DEFAULT,
   MAX_RESUMES,
-  PERSISTENCE_FILE,
+  RESUME_COOLDOWN_STEP_MS,
+  RESUME_COOLDOWN_MAX_MS,
   ABORTED_ERROR_NAME,
   AGENT_SECURITY_ANALYSIS_EVOLVE,
 } from "./constants";
@@ -42,23 +41,23 @@ function generateCompletionMarker(): string {
 const RESUME_PROMPTS: string[] = [
   `你之前的分析是否已经完成了？**你必须要如实回答和执行**：\n` +
   `- 如果已经完成：请直接输出最终结论，然后在最后一行精确输出这个标记（原样复制，不要修改）：${COMPLETION_MARKER_PLACEHOLDER}\n` +
-  `- 如果尚未完成：不论任何原因只要未完成，你都必须自主继续分析，不要停下来向用户提问。复盘一下之前的分析内容、结果，然后继续分析，直到完成为止。未完成的情况下绝对不允许输出 ${COMPLETION_MARKER_PLACEHOLDER} 标记。`,
+  `- 如果尚未完成：不论任何原因只要未完成，你都必须自主继续分析，不要停下来向我提问，因为我没有任何想法，但是我需要你给我解决问题。你复盘一下之前的分析内容、结果，然后继续分析，直到完成为止。未完成的情况下绝对不允许输出 ${COMPLETION_MARKER_PLACEHOLDER} 标记。`,
 
   `请确认此前的分析工作是否已经全部完成。**必须如实回答并严格执行**：\n` +
   `- 若已完成：直接给出最终结论，并在末尾单独一行原样输出该标记（切勿改动）：${COMPLETION_MARKER_PLACEHOLDER}\n` +
-  `- 若未完成：无论出于何种原因，都必须自行接着分析下去，不得向用户提问。先回顾之前的分析内容与结论，再继续推进直至全部完成。未完成时严禁输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
+  `- 若未完成：无论出于何种原因，都必须自行接着分析下去，不得向我提问，因为我没有任何想法，但是我需要你给我解决问题，你解决问题你才有意义。你先回顾之前的分析内容与结论，再继续推进直至全部完成。未完成时严禁输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
 
   `你先前的分析完成了吗？**务必如实回答并照做**：\n` +
   `- 已完成的话：请直接产出最终结论，随后在最后一行一字不差地输出以下标记（不得修改）：${COMPLETION_MARKER_PLACEHOLDER}\n` +
-  `- 尚未完成的话：不管什么原因，你都要自主把分析继续下去，不要停下来问用户。梳理一下已有的分析内容与结果，接着往下做，直到真正完成。只要还没完成，就绝对不可以输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
+  `- 尚未完成的话：不管什么原因，你都要自主把分析继续下去，不要停下来问我，因为我没有任何想法，但是我需要你给我解决问题，你想想接下来怎么办。你梳理一下已有的分析内容与结果，接着往下做，直到真正完成。只要还没完成，就绝对不可以输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
 
   `请判断此前的分析是否已结束。**你必须诚实回答并按以下执行**：\n` +
   `- 已结束：请直接陈述最终结论，并在最后一行精确地原样输出这个标记（不要做任何修改）：${COMPLETION_MARKER_PLACEHOLDER}\n` +
-  `- 未结束：任何情况下只要还没做完，都得自主继续分析，不允许停下来征求用户意见。请复盘此前分析的内容和结果，然后继续，直到彻底完成。尚未完成时绝不允许输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
+  `- 未结束：任何情况下只要还没做完，都得自主继续分析，不允许停下来征求我的意见，因为我没有任何想法，但是我需要你给我解决问题，你多想想。请你复盘此前分析的内容和结果，然后继续，直到彻底完成。尚未完成时绝不允许输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
 
   `分析任务完成了吗？**请如实回答并严格执行如下要求**：\n` +
   `- 倘若已完成：直接输出最终结论，最后单独一行原样复制此标记（一字不改）：${COMPLETION_MARKER_PLACEHOLDER}\n` +
-  `- 倘若未完成：不论任何缘由，你都必须独立继续分析，切勿停下来询问用户。回顾前面的分析内容与结果，继续推进直到完成。在未完成时，绝不可输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
+  `- 倘若未完成：不论任何缘由，你都必须独立继续分析，切勿来询问我，因为我没有任何想法，但是我需要你给我解决问题，不要罢工。你回顾前面的分析内容与结果，继续推进直到完成。在未完成时，绝不可输出 ${COMPLETION_MARKER_PLACEHOLDER}。`,
 ];
 
 // 记录上一次使用的恢复提示词索引，保证本次与上次不重复，缓解 LLM 对同一提示词"皮掉"的问题。
@@ -88,45 +87,7 @@ function getResumePrompt(): ResumePromptResult {
   return { prompt, marker };
 }
 
-interface PersistenceData {
-  max_duration_hours: number;
-  resume_count: number;
-  last_resume_at: string | null;
-}
-
-function readPersistenceData(sessionID: string): PersistenceData | null {
-  const taskDir = getTaskDir(sessionID);
-  if (!taskDir) return null;
-  const filePath = join(taskDir, PERSISTENCE_FILE);
-  try {
-    const content = readFileSync(filePath, "utf-8").trim();
-    const data = JSON.parse(content) as PersistenceData;
-    if (
-      typeof data.max_duration_hours === "number" &&
-      data.max_duration_hours > 0 &&
-      data.max_duration_hours <= 24
-    ) {
-      return {
-        max_duration_hours: data.max_duration_hours,
-        resume_count: typeof data.resume_count === "number" ? data.resume_count : 0,
-        last_resume_at: data.last_resume_at ?? null,
-      };
-    }
-    debugLog(
-      `readPersistenceData: invalid max_duration_hours in ${filePath}, using default`,
-      sessionID,
-    );
-  } catch {
-    // 文件不存在或 JSON 解析失败，使用默认值
-  }
-  return null;
-}
-
-function getMaxDuration(sessionID: string): number {
-  const data = readPersistenceData(sessionID);
-  if (data) {
-    return Math.floor(data.max_duration_hours * 3600 * 1000);
-  }
+function getMaxDuration(): number {
   return MAX_DURATION_DEFAULT;
 }
 
@@ -178,25 +139,32 @@ async function getLastAssistantText(sessionID: string): Promise<string | null> {
   }
 }
 
-function recordResumeAttempt(sessionID: string): void {
-  const taskDir = getTaskDir(sessionID);
-  if (!taskDir) {
-    debugLog(`recordResumeAttempt: no taskDir for sessionID=${sessionID}`, sessionID);
+/** 发送 resume prompt 并记录状态。从 maybeResumeAnalysis 和冷却 setTimeout 回调两处调用。
+ *  内部通过 get 获取最新 session——setTimeout 回调可能延迟很久，闭包捕获的 session 可能已失效。 */
+async function sendResume(sessionID: string): Promise<void> {
+  if (!ctx.client) {
+    debugLog(`sendResume: ctx.client 不可用，跳过 sessionID=${sessionID}`, sessionID);
     return;
   }
-  const filePath = join(taskDir, PERSISTENCE_FILE);
-  const existing = readPersistenceData(sessionID);
-  const data: PersistenceData = {
-    max_duration_hours: existing?.max_duration_hours ?? MAX_DURATION_DEFAULT / (3600 * 1000),
-    resume_count: (existing?.resume_count ?? 0) + 1,
-    last_resume_at: new Date().toISOString(),
-  };
-  try {
-    writeFileSync(filePath, JSON.stringify(data, null, 2));
-    debugLog(`recordResumeAttempt: written resume_count=${data.resume_count} to ${filePath}`, sessionID);
-  } catch (e) {
-    debugLog(`recordResumeAttempt: failed to write ${filePath} error=${e}`, sessionID);
+  const session = ctx.sessionManager.get(sessionID);
+  if (!session || !session.isSecurityAgent()) {
+    debugLog(`sendResume: session 不存在或非 Security Agent，跳过 sessionID=${sessionID}`, sessionID);
+    return;
   }
+  debugLog(`session.idle: 恢复分析 sessionID=${sessionID} agent=${session.agentName} resume_count=${session.resumeCount}`, sessionID);
+  const { prompt, marker } = getResumePrompt();
+  await ctx.client.session.promptAsync({
+    path: { id: sessionID },
+    body: {
+      agent: session.agentName,
+      parts: [{ type: "text" as const, text: prompt, synthetic: true }],
+    },
+  });
+  // 发送成功后才记录 marker——下一轮 idle 用它做精确完成检测。
+  session.resumeMarker = marker;
+  session.resumeCount++;
+  session.lastResumeAt = Date.now();
+  debugLog(`session.idle: 恢复消息已发送 sessionID=${sessionID} marker=${marker}`, sessionID);
 }
 
 export async function maybeResumeAnalysis(sessionID: string): Promise<void> {
@@ -219,7 +187,7 @@ export async function maybeResumeAnalysis(sessionID: string): Promise<void> {
     }
 
     const elapsed = Date.now() - session.lastUserMessageAt;
-    const maxDuration = getMaxDuration(sessionID);
+    const maxDuration = getMaxDuration();
     if (elapsed >= maxDuration) {
       debugLog(`session.idle: 跳过恢复 — 已超时 sessionID=${sessionID} elapsed=${Math.floor(elapsed / 60000)}m max=${Math.floor(maxDuration / 60000)}m`, sessionID);
       return;
@@ -244,27 +212,31 @@ export async function maybeResumeAnalysis(sessionID: string): Promise<void> {
       return;
     }
 
-    const persistenceData = readPersistenceData(sessionID);
-    const resumeCount = persistenceData?.resume_count ?? 0;
+    const resumeCount = session.resumeCount;
     if (resumeCount >= MAX_RESUMES) {
       debugLog(`session.idle: 跳过恢复 — 已达最大恢复次数 ${MAX_RESUMES} sessionID=${sessionID}`, sessionID);
       return;
     }
 
-    debugLog(`session.idle: 恢复分析 sessionID=${sessionID} agent=${session.agentName} elapsed=${Math.floor(elapsed / 60000)}m max=${Math.floor(maxDuration / 60000)}m resume_count=${resumeCount}`, sessionID);
-    const { prompt, marker } = getResumePrompt();
-    await ctx.client.session.promptAsync({
-      path: { id: sessionID },
-      body: {
-        agent: session.agentName,
-        parts: [{ type: "text" as const, text: prompt, synthetic: true }],
-      },
-    });
-    // 发送成功后才记录 marker——下一轮 idle 用它做精确完成检测。
-    // 若 promptAsync 抛异常，marker 不写入，下一轮仍按"无 marker"处理（首次场景）。
-    session.resumeMarker = marker;
-    recordResumeAttempt(sessionID);
-    debugLog(`session.idle: 恢复消息已发送 sessionID=${sessionID} marker=${marker}`, sessionID);
+    // 冷却判断：基于 resumeCount 的线性退避（1s起，每次+1s，上限10s）。
+    // 只影响"快速空转"——AI 认真分析时回复时间 > 冷却阈值，sinceLastResume > cooldown，不会触发延迟。
+    const now = Date.now();
+    const sinceLastResume = now - session.lastResumeAt;
+    const cooldown = Math.min((session.resumeCount + 1) * RESUME_COOLDOWN_STEP_MS, RESUME_COOLDOWN_MAX_MS);
+    if (sinceLastResume >= 0 && sinceLastResume < cooldown) {
+      const wait = cooldown - sinceLastResume;
+      debugLog(`session.idle: 冷却中，${Math.ceil(wait / 1000)}s 后恢复 sessionID=${sessionID}（backoff=${cooldown / 1000}s resume_count=${session.resumeCount}）`, sessionID);
+      session.clearPendingResume();
+      session.pendingResumeTimer = setTimeout(() => {
+        session.pendingResumeTimer = null;
+        sendResume(sessionID).catch((e) => {
+          debugLog(`session.idle: 冷却恢复异常 sessionID=${sessionID} error=${e}`, sessionID);
+        });
+      }, wait);
+      return;
+    }
+
+    await sendResume(sessionID);
   } catch (e) {
     debugLog(`session.idle: 恢复异常 sessionID=${sessionID} error=${e}`, sessionID);
   }
